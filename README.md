@@ -3,6 +3,8 @@
 HTWind is a highly customizable, HTML-based widget manager that brings your favorite web tools and system helpers directly to your Windows desktop.
 It also supports running PowerShell commands when you need quick system actions.
 
+[Website](https://htwind.vercel.app)
+
 ![HTWind Screenshot](assets/screenshot.png)
 
 ## Highlights

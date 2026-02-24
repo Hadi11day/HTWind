@@ -3,10 +3,10 @@ param(
   [string]$RuntimeIdentifier = 'win-x64',
   [string]$CredentialFile,
   [string]$Version,
-  [string]$Publisher = 'CN=00000000-0000-0000-0000-000000000000',
-  [string]$PackageName = 'sametcn99.HTWind',
+  [string]$Publisher = 'PUT_PACKAGE_IDENTITY_PUBLISHER_HERE',
+  [string]$PackageName = 'PUT_PACKAGE_IDENTITY_NAME_HERE',
   [string]$DisplayName = 'HTWind',
-  [string]$PublisherDisplayName = 'sametcn99',
+  [string]$PublisherDisplayName = 'PUT_PUBLISHER_DISPLAY_NAME_HERE',
   [string]$Description = 'HTWind desktop widget manager',
   [string]$CertificatePath,
   [string]$CertificatePassword,
@@ -111,43 +111,45 @@ if ([string]::IsNullOrWhiteSpace($CredentialFile)) {
   $CredentialFile = Join-Path $PSScriptRoot 'msix-store.credentials.json'
 }
 
-if (Test-Path $CredentialFile) {
-  try {
-    $credentialConfig = Get-Content -Path $CredentialFile -Raw | ConvertFrom-Json
+if (-not (Test-Path $CredentialFile)) {
+  throw "Credential file not found: $CredentialFile"
+}
 
-    if (-not $PSBoundParameters.ContainsKey('Publisher') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.Publisher)) {
-      $Publisher = [string]$credentialConfig.Publisher
-    }
+try {
+  $credentialConfig = Get-Content -Path $CredentialFile -Raw | ConvertFrom-Json
 
-    if (-not $PSBoundParameters.ContainsKey('PackageName') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.PackageName)) {
-      $PackageName = [string]$credentialConfig.PackageName
-    }
-
-    if (-not $PSBoundParameters.ContainsKey('PublisherDisplayName') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.PublisherDisplayName)) {
-      $PublisherDisplayName = [string]$credentialConfig.PublisherDisplayName
-    }
-
-    if (-not $PSBoundParameters.ContainsKey('DisplayName') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.DisplayName)) {
-      $DisplayName = [string]$credentialConfig.DisplayName
-    }
-
-    if (-not $PSBoundParameters.ContainsKey('Description') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.Description)) {
-      $Description = [string]$credentialConfig.Description
-    }
-
-    if (-not $PSBoundParameters.ContainsKey('CertificatePath') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.CertificatePath)) {
-      $CertificatePath = [string]$credentialConfig.CertificatePath
-    }
-
-    if (-not $PSBoundParameters.ContainsKey('CertificatePassword') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.CertificatePassword)) {
-      $CertificatePassword = [string]$credentialConfig.CertificatePassword
-    }
-
-    Write-Host "Loaded packaging credentials: $CredentialFile"
+  if (-not $PSBoundParameters.ContainsKey('Publisher') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.Publisher)) {
+    $Publisher = [string]$credentialConfig.Publisher
   }
-  catch {
-    throw "Credential file could not be parsed: $CredentialFile"
+
+  if (-not $PSBoundParameters.ContainsKey('PackageName') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.PackageName)) {
+    $PackageName = [string]$credentialConfig.PackageName
   }
+
+  if (-not $PSBoundParameters.ContainsKey('PublisherDisplayName') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.PublisherDisplayName)) {
+    $PublisherDisplayName = [string]$credentialConfig.PublisherDisplayName
+  }
+
+  if (-not $PSBoundParameters.ContainsKey('DisplayName') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.DisplayName)) {
+    $DisplayName = [string]$credentialConfig.DisplayName
+  }
+
+  if (-not $PSBoundParameters.ContainsKey('Description') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.Description)) {
+    $Description = [string]$credentialConfig.Description
+  }
+
+  if (-not $PSBoundParameters.ContainsKey('CertificatePath') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.CertificatePath)) {
+    $CertificatePath = [string]$credentialConfig.CertificatePath
+  }
+
+  if (-not $PSBoundParameters.ContainsKey('CertificatePassword') -and -not [string]::IsNullOrWhiteSpace($credentialConfig.CertificatePassword)) {
+    $CertificatePassword = [string]$credentialConfig.CertificatePassword
+  }
+
+  Write-Host "Loaded packaging credentials: $CredentialFile"
+}
+catch {
+  throw "Credential file could not be parsed: $CredentialFile"
 }
 
 if (-not (Test-Path $projectPath)) {
@@ -244,6 +246,7 @@ $signtoolPath = Get-ToolPath -FileName 'signtool.exe'
 $packageBaseName = "HTWind-store-$Version-$ridLabel"
 $msixPath = Join-Path $distDir "$packageBaseName.msix"
 $msixUploadPath = Join-Path $distDir "$packageBaseName.msixupload"
+$uploadStageDir = Join-Path $outRoot 'upload'
 
 if (Test-Path $msixPath) {
   Remove-Item $msixPath -Force
@@ -251,6 +254,10 @@ if (Test-Path $msixPath) {
 
 if (Test-Path $msixUploadPath) {
   Remove-Item $msixUploadPath -Force
+}
+
+if (Test-Path $uploadStageDir) {
+  Remove-Item $uploadStageDir -Recurse -Force
 }
 
 Write-Host "Packing MSIX..."
@@ -296,7 +303,11 @@ else {
   Write-Warning 'MSIX was not signed. Provide -CertificatePath or use -CreateTestCertificate for local install tests.'
 }
 
-Copy-Item -Path $msixPath -Destination $msixUploadPath -Force
+Ensure-Dir -Path $uploadStageDir
+Copy-Item -Path $msixPath -Destination (Join-Path $uploadStageDir (Split-Path $msixPath -Leaf)) -Force
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::CreateFromDirectory($uploadStageDir, $msixUploadPath)
 
 Write-Host "MSIX package created: $msixPath"
 Write-Host "MSIX upload package created: $msixUploadPath"
