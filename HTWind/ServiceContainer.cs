@@ -22,6 +22,7 @@ public sealed class ServiceContainer
         WidgetTemplateService = new WidgetTemplateService();
         StartupRegistrationService = new StartupRegistrationService();
         ExecutionRiskConsentService = new ExecutionRiskConsentService();
+        BuiltInWidgetInitializationStateService = new BuiltInWidgetInitializationStateService();
     }
 
     public IFileDialogService FileDialogService { get; }
@@ -44,6 +45,8 @@ public sealed class ServiceContainer
 
     public IExecutionRiskConsentService ExecutionRiskConsentService { get; }
 
+    public IBuiltInWidgetInitializationStateService BuiltInWidgetInitializationStateService { get; }
+
     public MainWindowViewModel CreateMainWindowViewModel()
     {
         return new MainWindowViewModel(
@@ -61,6 +64,7 @@ public sealed class ServiceContainer
         return new ApplicationBootstrapper(
             WidgetManager,
             WidgetTemplateService,
+            BuiltInWidgetInitializationStateService,
             themeService,
             mainWindow
         );

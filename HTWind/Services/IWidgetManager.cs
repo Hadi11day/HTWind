@@ -5,6 +5,7 @@ namespace HTWind.Services;
 public interface IWidgetManager
 {
     ObservableCollection<WidgetModel> Widgets { get; }
+    bool HasPersistedState { get; }
     void LoadPersistedWidgets();
     void AddWidget(string filePath);
     void AddWidget(string filePath, bool isVisible);

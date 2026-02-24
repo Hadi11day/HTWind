@@ -84,9 +84,12 @@ public class WidgetManager : IWidgetManager
     }
 
     public ObservableCollection<WidgetModel> Widgets { get; } = new();
+    public bool HasPersistedState { get; private set; }
 
     public void LoadPersistedWidgets()
     {
+        HasPersistedState = _stateRepository.HasStateFile();
+
         var states = _stateRepository.Load();
         if (states.Count == 0)
         {
@@ -161,7 +164,7 @@ public class WidgetManager : IWidgetManager
     public void OpenEditor(WidgetModel model)
     {
         ArgumentNullException.ThrowIfNull(model);
-        OpenEditorCore(model, false);
+        OpenEditorCore(model, true);
     }
 
     private WidgetModel AddWidgetFromManagedPath(string managedPath, bool isVisible)

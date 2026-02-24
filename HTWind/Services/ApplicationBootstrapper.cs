@@ -4,6 +4,7 @@ namespace HTWind.Services;
 
 public sealed class ApplicationBootstrapper : IApplicationBootstrapper
 {
+    private readonly IBuiltInWidgetInitializationStateService _builtInWidgetInitializationStateService;
     private readonly MainWindow _mainWindow;
     private readonly IThemeService _themeService;
     private readonly IWidgetManager _widgetManager;
@@ -12,12 +13,14 @@ public sealed class ApplicationBootstrapper : IApplicationBootstrapper
     public ApplicationBootstrapper(
         IWidgetManager widgetManager,
         IWidgetTemplateService widgetTemplateService,
+        IBuiltInWidgetInitializationStateService builtInWidgetInitializationStateService,
         IThemeService themeService,
         MainWindow mainWindow
     )
     {
         _widgetManager = widgetManager ?? throw new ArgumentNullException(nameof(widgetManager));
         _widgetTemplateService = widgetTemplateService ?? throw new ArgumentNullException(nameof(widgetTemplateService));
+        _builtInWidgetInitializationStateService = builtInWidgetInitializationStateService ?? throw new ArgumentNullException(nameof(builtInWidgetInitializationStateService));
         _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
         _mainWindow = mainWindow ?? throw new ArgumentNullException(nameof(mainWindow));
     }
@@ -45,8 +48,14 @@ public sealed class ApplicationBootstrapper : IApplicationBootstrapper
 
     private void EnsureDefaultWidgets()
     {
-        if (_widgetManager.Widgets.Count > 0)
+        if (_builtInWidgetInitializationStateService.HasInitialized())
         {
+            return;
+        }
+
+        if (_widgetManager.HasPersistedState)
+        {
+            _builtInWidgetInitializationStateService.MarkInitialized();
             return;
         }
 
@@ -55,6 +64,8 @@ public sealed class ApplicationBootstrapper : IApplicationBootstrapper
             var templatePath = _widgetTemplateService.CreateTemplateFile(templateType);
             _widgetManager.AddWidget(templatePath, false);
         }
+
+        _builtInWidgetInitializationStateService.MarkInitialized();
     }
 
     private static void SyncBuiltInWidgetFiles(

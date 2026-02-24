@@ -7,6 +7,8 @@ using HTWind.Services;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
+using Wpf.Ui.Appearance;
+
 using Wpf.Ui.Controls;
 
 using MessageBox = System.Windows.MessageBox;
@@ -82,6 +84,8 @@ public partial class HtmlCodeEditorWindow : FluentWindow
             CoreWebView2_WebMessageReceived
         );
 
+        await ApplyEditorThemeAsync();
+
         if (_isInitialHotReloadEnabled)
         {
             HotReloadToggle.IsChecked = true;
@@ -150,6 +154,29 @@ public partial class HtmlCodeEditorWindow : FluentWindow
     {
         var content = await _htmlEditorService.GetEditorContentAsync(EditorWebView);
         LivePreviewChanged?.Invoke(this, new LivePreviewChangedEventArgs(content));
+    }
+
+    private async Task ApplyEditorThemeAsync()
+    {
+        var monacoTheme = IsLightApplicationTheme() ? "vs" : "vs-dark";
+        await EditorWebView.ExecuteScriptAsync(
+            "(function(){"
+            + "const monacoTheme='" + monacoTheme + "';"
+            + "if(window.monaco&&window.monaco.editor&&window.monaco.editor.setTheme){window.monaco.editor.setTheme(monacoTheme);}"
+            + "const fallback=document.getElementById('fallback');"
+            + "if(fallback){"
+            + "const light=monacoTheme==='vs';"
+            + "fallback.style.background=light?'#ffffff':'#1e1e1e';"
+            + "fallback.style.color=light?'#1f2328':'#d4d4d4';"
+            + "}"
+            + "})();"
+        );
+    }
+
+    private static bool IsLightApplicationTheme()
+    {
+        var appTheme = ApplicationThemeManager.GetAppTheme();
+        return appTheme == ApplicationTheme.Light;
     }
 
     protected override void OnClosed(EventArgs e)

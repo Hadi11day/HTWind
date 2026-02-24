@@ -17,6 +17,11 @@ public sealed class WidgetStateRepository : IWidgetStateRepository
         "Widgets"
     );
 
+    public bool HasStateFile()
+    {
+        return File.Exists(_stateFilePath);
+    }
+
     public IReadOnlyList<WidgetStateRecord> Load()
     {
         if (!File.Exists(_stateFilePath))

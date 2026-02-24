@@ -22,7 +22,7 @@ public partial class CreateWidgetWithEditorWindow : FluentWindow
 
     public bool IsVisibleByDefault { get; private set; } = true;
 
-    public bool EnableHotReload { get; private set; }
+    public bool EnableHotReload { get; private set; } = true;
 
     private void Create_Click(object sender, RoutedEventArgs e)
     {

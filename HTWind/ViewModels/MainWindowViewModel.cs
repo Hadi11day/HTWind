@@ -13,7 +13,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private readonly IFileDialogService _fileDialogService;
     private readonly IStartupRegistrationService _startupRegistrationService;
     private readonly IWidgetManager _widgetManager;
-    private ThemeOption _selectedThemeOption = ThemeOption.Device;
 
     public MainWindowViewModel(
         IFileDialogService fileDialogService,
@@ -38,19 +37,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ThemeOption SelectedThemeOption
     {
-        get => _selectedThemeOption;
+        get;
         set
         {
-            if (_selectedThemeOption == value)
+            if (field == value)
             {
                 return;
             }
 
-            _selectedThemeOption = value;
+            field = value;
             OnPropertyChanged();
             ThemeRequested?.Invoke(this, value);
         }
-    }
+    } = ThemeOption.Device;
 
     public bool IsRunOnStartupEnabled
     {

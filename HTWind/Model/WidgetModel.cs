@@ -5,115 +5,104 @@ namespace HTWind;
 
 public class WidgetModel : INotifyPropertyChanged
 {
-    private string? _filePath;
-    private bool _isLocked;
-    private bool _isPinned;
-    private bool _isVisible = true;
-    private double? _left;
-    private string? _monitorDeviceName;
-    private string? _name;
-    private double? _top;
-    private double? _widgetHeight;
-    private double? _widgetWidth;
-
     public string Id { get; set; } = Guid.NewGuid().ToString();
 
     public string? Name
     {
-        get => _name;
+        get;
         set
         {
-            _name = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public string? FilePath
     {
-        get => _filePath;
+        get;
         set
         {
-            _filePath = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public bool IsVisible
     {
-        get => _isVisible;
+        get;
         set
         {
-            _isVisible = value;
+            field = value;
             OnPropertyChanged();
         }
-    }
+    } = true;
 
     public bool IsLocked
     {
-        get => _isLocked;
+        get;
         set
         {
-            _isLocked = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public bool IsPinned
     {
-        get => _isPinned;
+        get;
         set
         {
-            _isPinned = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public double? Left
     {
-        get => _left;
+        get;
         set
         {
-            _left = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public double? Top
     {
-        get => _top;
+        get;
         set
         {
-            _top = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public double? WidgetWidth
     {
-        get => _widgetWidth;
+        get;
         set
         {
-            _widgetWidth = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public double? WidgetHeight
     {
-        get => _widgetHeight;
+        get;
         set
         {
-            _widgetHeight = value;
+            field = value;
             OnPropertyChanged();
         }
     }
 
     public string? MonitorDeviceName
     {
-        get => _monitorDeviceName;
+        get;
         set
         {
-            _monitorDeviceName = value;
+            field = value;
             OnPropertyChanged();
         }
     }

@@ -2,6 +2,8 @@ namespace HTWind.Services;
 
 public interface IWidgetStateRepository
 {
+    bool HasStateFile();
+
     IReadOnlyList<WidgetStateRecord> Load();
 
     void Save(IEnumerable<WidgetStateRecord> states);

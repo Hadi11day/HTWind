@@ -64,7 +64,7 @@
                     <ui:ToggleSwitch
                         x:Name="EnableHotReloadToggle"
                         Content="{loc:Loc EditorWindow_HotReload}"
-                        IsChecked="False" />
+                        IsChecked="True" />
                 </StackPanel>
             </Grid>
         </ui:Card>
