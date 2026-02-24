@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 
 using Microsoft.Win32;
@@ -14,7 +15,8 @@ public sealed class StartupRegistrationService : IStartupRegistrationService
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunRegistryPath, false);
-            return key?.GetValue(AppName) is not null;
+            var startupCommand = key?.GetValue(AppName) as string;
+            return !string.IsNullOrWhiteSpace(startupCommand);
         }
         catch
         {
@@ -26,19 +28,26 @@ public sealed class StartupRegistrationService : IStartupRegistrationService
     {
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(RunRegistryPath, true);
-            if (key is null)
-            {
-                return;
-            }
-
             if (enabled)
             {
-                key.SetValue(AppName, BuildExecutablePathValue());
+                using var key = Registry.CurrentUser.OpenSubKey(RunRegistryPath, true);
+                if (key is null)
+                {
+                    return;
+                }
+
+                var startupCommand = BuildExecutablePathValue();
+                if (string.IsNullOrWhiteSpace(startupCommand))
+                {
+                    return;
+                }
+
+                key.SetValue(AppName, startupCommand);
                 return;
             }
 
-            key.DeleteValue(AppName, false);
+            DeleteRunValue(Registry.CurrentUser);
+            DeleteRunValue(Registry.LocalMachine);
         }
         catch
         {
@@ -46,12 +55,48 @@ public sealed class StartupRegistrationService : IStartupRegistrationService
         }
     }
 
+    private static void DeleteRunValue(RegistryKey root)
+    {
+        try
+        {
+            using var key = root.OpenSubKey(RunRegistryPath, true);
+            key?.DeleteValue(AppName, false);
+        }
+        catch
+        {
+            // Ignore permission failures for machine-wide registry hive cleanup.
+        }
+    }
+
     private static string BuildExecutablePathValue()
     {
-        var path = Assembly.GetExecutingAssembly().Location;
+        var processPath = Environment.ProcessPath;
+        if (!string.IsNullOrWhiteSpace(processPath))
+        {
+            return $"\"{processPath}\"";
+        }
+
+        var entryAssemblyPath = Assembly.GetEntryAssembly()?.Location;
+        if (!string.IsNullOrWhiteSpace(entryAssemblyPath))
+        {
+            return BuildLaunchCommand(entryAssemblyPath);
+        }
+
+        using var process = Process.GetCurrentProcess();
+        var modulePath = process.MainModule?.FileName;
+        if (!string.IsNullOrWhiteSpace(modulePath))
+        {
+            return BuildLaunchCommand(modulePath);
+        }
+
+        return string.Empty;
+    }
+
+    private static string BuildLaunchCommand(string path)
+    {
         if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
-            path = string.Concat(path.AsSpan(0, path.Length - 4), ".exe");
+            return $"dotnet \"{path}\"";
         }
 
         return $"\"{path}\"";

@@ -87,5 +87,6 @@ begin
   if CurUninstallStep = usUninstall then
   begin
     RegDeleteValue(HKCU, 'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '{#MyAppName}');
+    RegDeleteValue(HKLM, 'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run', '{#MyAppName}');
   end;
 end;
