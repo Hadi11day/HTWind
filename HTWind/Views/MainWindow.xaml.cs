@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,6 +18,8 @@ namespace HTWind;
 /// </summary>
 public partial class MainWindow : FluentWindow
 {
+    private const string DiscussionsUrl = "https://github.com/sametcn99/HTWind/discussions";
+
     private readonly MainWindowViewModel _viewModel;
     private readonly IWidgetManager _widgetManager;
 
@@ -134,6 +137,22 @@ public partial class MainWindow : FluentWindow
             createWindow.IsVisibleByDefault,
             createWindow.EnableHotReload
         );
+    }
+
+    private void FindMore_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = DiscussionsUrl,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Ignore failures opening external links.
+        }
     }
 
     public void SetThemeService(IThemeService themeService)

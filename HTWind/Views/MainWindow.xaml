@@ -196,6 +196,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <ui:SymbolIcon
                             Symbol="Info24"
@@ -208,6 +209,16 @@
                             Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                             Text="{loc:Loc MainWindow_Tips}"
                             TextWrapping="Wrap" />
+
+                        <ui:Button
+                            Grid.Column="2"
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center"
+                            Content="{loc:Loc MainWindow_FindMore}"
+                            Icon="{ui:SymbolIcon Open24}"
+                            ToolTip="{loc:Loc MainWindow_FindMore}"
+                            AutomationProperties.Name="{loc:Loc MainWindow_FindMore}"
+                            Click="FindMore_Click" />
                     </Grid>
                 </ui:Card>
 

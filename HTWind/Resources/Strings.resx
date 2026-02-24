@@ -40,6 +40,9 @@
   <data name="MainWindow_Tips" xml:space="preserve">
     <value>Tip: In unlocked mode, widgets can be moved and resized. In locked mode, you can interact with HTML content.</value>
   </data>
+  <data name="MainWindow_FindMore" xml:space="preserve">
+    <value>Find more</value>
+  </data>
   <data name="MainWindow_Visible" xml:space="preserve">
     <value>Visible</value>
   </data>

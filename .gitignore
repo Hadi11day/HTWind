@@ -251,6 +251,10 @@ _pkginfo.txt
 *.appx
 *.appxbundle
 *.appxupload
+*.msix
+*.msixupload
+*.pfx
+scripts/msix-store.credentials.json
 
 # Visual Studio cache files
 # files ending in .cache can be ignored
