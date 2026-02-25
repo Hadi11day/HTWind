@@ -10,6 +10,7 @@ import {
   Subtitle1,
   Title1,
   makeStyles,
+  mergeClasses,
   shorthands,
   tokens,
   webDarkTheme,
@@ -259,6 +260,11 @@ const useStyles = makeStyles({
   dropdownItemMeta: {
     color: 'rgba(255, 255, 255, 0.52)',
   },
+  dropdownList: {
+    listStyleType: 'none',
+    ...shorthands.padding(0),
+    ...shorthands.margin(0),
+  },
   statsGrid: {
     display: 'grid',
     gap: '12px',
@@ -274,6 +280,11 @@ const useStyles = makeStyles({
     display: 'grid',
     rowGap: '6px',
     minHeight: '88px',
+  },
+  statCardSpanTwo: {
+    '@media (min-width: 860px)': {
+      gridColumn: 'span 2',
+    },
   },
   statValue: {
     color: '#ffffff',
@@ -614,10 +625,10 @@ function App() {
   const highlights = [
     { value: '20+', label: 'Built-in templates' },
     { value: 'Hot Reload', label: 'Live widget preview while editing' },
-    { value: 'Built-in Editor', label: 'Create and edit widgets in-app' },
     { value: 'WebView2', label: 'Native rendering stack' },
-    { value: 'PowerShell API', label: 'Host-side automation bridge' },
     { value: 'Open Source', label: 'GPL 3.0 licensed project' },
+    { value: 'Built-in Editor', label: 'Create and edit widgets in-app', spanTwo: true },
+    { value: 'PowerShell API', label: 'Host-side automation bridge', spanTwo: true },
   ]
 
   const workflowUseCases = [
@@ -748,23 +759,26 @@ function App() {
               </Button>
 
               {isDownloadMenuOpen && latestAssets.length > 0 && (
-                <div className={styles.dropdownMenu} role="menu" aria-label="Latest release asset downloads">
+                <div className={styles.dropdownMenu}>
                   <Caption1 className={styles.dropdownTitle}>Latest Release Assets</Caption1>
-                  {latestAssets.map((asset) => (
-                    <Link
-                      key={asset.id}
-                      href={asset.browser_download_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={styles.dropdownItem}
-                      onClick={() => {
-                        setIsDownloadMenuOpen(false)
-                      }}
-                    >
-                      <span>{asset.name}</span>
-                      <Caption1 className={styles.dropdownItemMeta}>{formatFileSize(asset.size)}</Caption1>
-                    </Link>
-                  ))}
+                  <ul className={styles.dropdownList} aria-label="Latest release asset downloads">
+                    {latestAssets.map((asset) => (
+                      <li key={asset.id}>
+                        <Link
+                          href={asset.browser_download_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setIsDownloadMenuOpen(false)
+                          }}
+                        >
+                          <span>{asset.name}</span>
+                          <Caption1 className={styles.dropdownItemMeta}>{formatFileSize(asset.size)}</Caption1>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
@@ -781,7 +795,10 @@ function App() {
 
         <section className={styles.statsGrid} aria-label="Project highlights">
           {highlights.map((item) => (
-            <Card key={item.label} className={styles.statCard}>
+            <Card
+              key={item.label}
+              className={mergeClasses(styles.statCard, item.spanTwo && styles.statCardSpanTwo)}
+            >
               <span className={styles.statValue}>{item.value}</span>
               <Caption1 className={styles.statLabel}>{item.label}</Caption1>
             </Card>
