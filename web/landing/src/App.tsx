@@ -118,12 +118,10 @@ const useStyles = makeStyles({
     color: 'rgba(255, 255, 255, 0.78)',
   },
   banner: {
-    display: 'flex',
-    flexWrap: 'wrap',
+    display: 'inline-flex',
     alignItems: 'center',
     gap: '8px',
-    width: '100%',
-    maxWidth: '100%',
+    width: 'fit-content',
     ...shorthands.padding('6px', '12px'),
     ...shorthands.borderRadius(tokens.borderRadiusLarge),
     backgroundColor: 'rgba(0, 120, 212, 0.14)',
@@ -144,13 +142,14 @@ const useStyles = makeStyles({
   },
   heroTopRow: {
     display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'start',
-    gap: '24px',
-  },
-  heroContent: {
-    flex: '1 1 520px',
-    minWidth: 0,
+    flexDirection: 'column',
+    gap: '32px',
+    '@media (min-width: 1080px)': {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'start',
+      gap: '48px',
+    },
   },
   heroHeading: {
     marginTop: '0',
@@ -168,24 +167,20 @@ const useStyles = makeStyles({
     fontSize: 'clamp(1rem, 2vw, 1.15rem)',
     color: 'rgba(255, 255, 255, 0.62)',
     maxWidth: '60ch',
-    width: '100%',
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
     lineHeight: '1.72',
   },
   releaseCard: {
     display: 'grid',
     rowGap: '8px',
-    flex: '1 1 280px',
     width: '100%',
     maxWidth: '320px',
     ...shorthands.padding('24px'),
     ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.08)'),
     ...shorthands.borderRadius(tokens.borderRadiusLarge),
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    justifySelf: 'start',
-    '@media (max-width: 760px)': {
-      maxWidth: '100%',
+    '@media (min-width: 1080px)': {
+      width: 'auto',
+      minWidth: '240px',
     },
   },
   releaseTitle: {
@@ -197,8 +192,6 @@ const useStyles = makeStyles({
     color: '#ffffff',
     fontWeight: tokens.fontWeightSemibold,
     fontSize: '1.25rem',
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
   },
   buttonRow: {
     display: 'flex',
@@ -206,10 +199,11 @@ const useStyles = makeStyles({
     gap: '12px',
     width: '100%',
     '& > *': {
-      flex: '1 1 240px',
-      minWidth: 0,
+      flexGrow: 1,
+      flexBasis: 'calc(50% - 12px)',
+      minWidth: 'min(100%, 260px)',
     },
-    '@media (max-width: 760px)': {
+    '@media (max-width: 600px)': {
       '& > *': {
         flexBasis: '100%',
       },
@@ -217,21 +211,10 @@ const useStyles = makeStyles({
   },
   primaryButton: {
     width: '100%',
-    maxWidth: '100%',
-    minWidth: 0,
-    height: 'auto',
-    textAlign: 'left',
     backgroundColor: '#0078D4',
     color: '#ffffff',
     ...shorthands.border('1px', 'solid', '#0078D4'),
-    ...shorthands.padding('10px', '14px'),
     fontWeight: tokens.fontWeightSemibold,
-    '& .fui-Button__content': {
-      whiteSpace: 'normal',
-      overflowWrap: 'anywhere',
-      wordBreak: 'break-word',
-      textAlign: 'left',
-    },
     ':hover': {
       backgroundColor: '#1a86e0',
       color: '#ffffff',
@@ -243,20 +226,9 @@ const useStyles = makeStyles({
   },
   ghostButton: {
     width: '100%',
-    maxWidth: '100%',
-    minWidth: 0,
-    height: 'auto',
-    textAlign: 'left',
-    ...shorthands.padding('10px', '14px'),
     backgroundColor: 'rgba(255, 255, 255, 0.055)',
     ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.1)'),
     color: 'rgba(255, 255, 255, 0.82)',
-    '& .fui-Button__content': {
-      whiteSpace: 'normal',
-      overflowWrap: 'anywhere',
-      wordBreak: 'break-word',
-      textAlign: 'left',
-    },
   },
   dropdownContainer: {
     position: 'relative',
@@ -264,20 +236,9 @@ const useStyles = makeStyles({
   },
   dropdownButton: {
     width: '100%',
-    maxWidth: '100%',
-    minWidth: 0,
-    height: 'auto',
-    textAlign: 'left',
-    ...shorthands.padding('10px', '14px'),
     backgroundColor: 'rgba(255, 255, 255, 0.055)',
     ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.1)'),
     color: 'rgba(255, 255, 255, 0.88)',
-    '& .fui-Button__content': {
-      whiteSpace: 'normal',
-      overflowWrap: 'anywhere',
-      wordBreak: 'break-word',
-      textAlign: 'left',
-    },
   },
   dropdownMenu: {
     position: 'absolute',
@@ -321,10 +282,7 @@ const useStyles = makeStyles({
   statsGrid: {
     display: 'grid',
     gap: '12px',
-    '@media (min-width: 640px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-    '@media (min-width: 1024px)': {
+    '@media (min-width: 860px)': {
       gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
     },
   },
@@ -338,7 +296,7 @@ const useStyles = makeStyles({
     minHeight: '88px',
   },
   statCardSpanTwo: {
-    '@media (min-width: 1024px)': {
+    '@media (min-width: 860px)': {
       gridColumn: 'span 2',
     },
   },
@@ -354,10 +312,7 @@ const useStyles = makeStyles({
   contentGrid: {
     display: 'grid',
     gap: '14px',
-    '@media (min-width: 720px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-    '@media (min-width: 1120px)': {
+    '@media (min-width: 900px)': {
       gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     },
   },
@@ -436,8 +391,6 @@ const useStyles = makeStyles({
     marginTop: '0',
     marginBottom: '0',
     color: 'rgba(255, 255, 255, 0.72)',
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
     lineHeight: '1.7',
   },
   communitySection: {
@@ -451,7 +404,7 @@ const useStyles = makeStyles({
   faqGrid: {
     display: 'grid',
     gap: '12px',
-    '@media (min-width: 980px)': {
+    '@media (min-width: 900px)': {
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     },
   },
@@ -464,7 +417,7 @@ const useStyles = makeStyles({
     rowGap: '8px',
   },
   faqCardWide: {
-    '@media (min-width: 980px)': {
+    '@media (min-width: 900px)': {
       gridColumn: '1 / -1',
     },
   },
@@ -746,7 +699,7 @@ function App() {
 
         <Card className={styles.heroCard}>
           <div className={styles.heroTopRow}>
-            <div className={styles.heroContent}>
+            <div>
               <h1 className={styles.heroHeading}>HTWind for Windows 11 desktops</h1>
               <p className={styles.heroDescription}>
                 HTWind is a customizable desktop widget manager that lets you run rich HTML widgets,
