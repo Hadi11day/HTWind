@@ -118,10 +118,12 @@ const useStyles = makeStyles({
     color: 'rgba(255, 255, 255, 0.78)',
   },
   banner: {
-    display: 'inline-flex',
+    display: 'flex',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: '8px',
-    width: 'fit-content',
+    width: '100%',
+    maxWidth: '100%',
     ...shorthands.padding('6px', '12px'),
     ...shorthands.borderRadius(tokens.borderRadiusLarge),
     backgroundColor: 'rgba(0, 120, 212, 0.14)',
@@ -141,42 +143,49 @@ const useStyles = makeStyles({
     },
   },
   heroTopRow: {
-    display: 'grid',
-    gap: '20px',
-    '@media (min-width: 900px)': {
-      gridTemplateColumns: '1fr auto',
-      alignItems: 'start',
-    },
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'start',
+    gap: '24px',
+  },
+  heroContent: {
+    flex: '1 1 520px',
+    minWidth: 0,
   },
   heroHeading: {
     marginTop: '0',
     marginBottom: '0',
     fontFamily: '"Segoe UI Variable Display", "Space Grotesk", "Trebuchet MS", sans-serif',
-    fontSize: 'clamp(2rem, 4vw, 3.2rem)',
+    fontSize: 'clamp(1.8rem, 6vw, 3.6rem)',
     letterSpacing: '-0.025em',
-    lineHeight: '1.08',
+    lineHeight: '1.1',
     color: '#ffffff',
     fontWeight: '700',
   },
   heroDescription: {
-    marginTop: '12px',
+    marginTop: '16px',
     marginBottom: '0',
-    fontSize: '1.03rem',
+    fontSize: 'clamp(1rem, 2vw, 1.15rem)',
     color: 'rgba(255, 255, 255, 0.62)',
-    maxWidth: '68ch',
+    maxWidth: '60ch',
+    width: '100%',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
     lineHeight: '1.72',
   },
   releaseCard: {
-    justifySelf: 'start',
     display: 'grid',
     rowGap: '8px',
-    minWidth: '210px',
-    ...shorthands.padding('16px'),
+    flex: '1 1 280px',
+    width: '100%',
+    maxWidth: '320px',
+    ...shorthands.padding('24px'),
     ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.08)'),
     ...shorthands.borderRadius(tokens.borderRadiusLarge),
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    '@media (min-width: 900px)': {
-      justifySelf: 'end',
+    justifySelf: 'start',
+    '@media (max-width: 760px)': {
+      maxWidth: '100%',
     },
   },
   releaseTitle: {
@@ -187,20 +196,42 @@ const useStyles = makeStyles({
   releaseValue: {
     color: '#ffffff',
     fontWeight: tokens.fontWeightSemibold,
-    fontSize: '1.2rem',
+    fontSize: '1.25rem',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
   },
   buttonRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-    gap: '10px',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '12px',
     width: '100%',
+    '& > *': {
+      flex: '1 1 240px',
+      minWidth: 0,
+    },
+    '@media (max-width: 760px)': {
+      '& > *': {
+        flexBasis: '100%',
+      },
+    },
   },
   primaryButton: {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    height: 'auto',
+    textAlign: 'left',
     backgroundColor: '#0078D4',
     color: '#ffffff',
     ...shorthands.border('1px', 'solid', '#0078D4'),
+    ...shorthands.padding('10px', '14px'),
     fontWeight: tokens.fontWeightSemibold,
+    '& .fui-Button__content': {
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      textAlign: 'left',
+    },
     ':hover': {
       backgroundColor: '#1a86e0',
       color: '#ffffff',
@@ -212,9 +243,20 @@ const useStyles = makeStyles({
   },
   ghostButton: {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    height: 'auto',
+    textAlign: 'left',
+    ...shorthands.padding('10px', '14px'),
     backgroundColor: 'rgba(255, 255, 255, 0.055)',
     ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.1)'),
     color: 'rgba(255, 255, 255, 0.82)',
+    '& .fui-Button__content': {
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      textAlign: 'left',
+    },
   },
   dropdownContainer: {
     position: 'relative',
@@ -222,9 +264,20 @@ const useStyles = makeStyles({
   },
   dropdownButton: {
     width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    height: 'auto',
+    textAlign: 'left',
+    ...shorthands.padding('10px', '14px'),
     backgroundColor: 'rgba(255, 255, 255, 0.055)',
     ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.1)'),
     color: 'rgba(255, 255, 255, 0.88)',
+    '& .fui-Button__content': {
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      textAlign: 'left',
+    },
   },
   dropdownMenu: {
     position: 'absolute',
@@ -268,7 +321,10 @@ const useStyles = makeStyles({
   statsGrid: {
     display: 'grid',
     gap: '12px',
-    '@media (min-width: 860px)': {
+    '@media (min-width: 640px)': {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    },
+    '@media (min-width: 1024px)': {
       gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
     },
   },
@@ -282,7 +338,7 @@ const useStyles = makeStyles({
     minHeight: '88px',
   },
   statCardSpanTwo: {
-    '@media (min-width: 860px)': {
+    '@media (min-width: 1024px)': {
       gridColumn: 'span 2',
     },
   },
@@ -298,7 +354,10 @@ const useStyles = makeStyles({
   contentGrid: {
     display: 'grid',
     gap: '14px',
-    '@media (min-width: 900px)': {
+    '@media (min-width: 720px)': {
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    },
+    '@media (min-width: 1120px)': {
       gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     },
   },
@@ -377,6 +436,8 @@ const useStyles = makeStyles({
     marginTop: '0',
     marginBottom: '0',
     color: 'rgba(255, 255, 255, 0.72)',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
     lineHeight: '1.7',
   },
   communitySection: {
@@ -390,7 +451,7 @@ const useStyles = makeStyles({
   faqGrid: {
     display: 'grid',
     gap: '12px',
-    '@media (min-width: 900px)': {
+    '@media (min-width: 980px)': {
       gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     },
   },
@@ -403,7 +464,7 @@ const useStyles = makeStyles({
     rowGap: '8px',
   },
   faqCardWide: {
-    '@media (min-width: 900px)': {
+    '@media (min-width: 980px)': {
       gridColumn: '1 / -1',
     },
   },
@@ -685,7 +746,7 @@ function App() {
 
         <Card className={styles.heroCard}>
           <div className={styles.heroTopRow}>
-            <div>
+            <div className={styles.heroContent}>
               <h1 className={styles.heroHeading}>HTWind for Windows 11 desktops</h1>
               <p className={styles.heroDescription}>
                 HTWind is a customizable desktop widget manager that lets you run rich HTML widgets,
@@ -699,21 +760,21 @@ function App() {
                 {isLoadingRelease ? <Spinner size="tiny" labelPosition="after" label="Loading" /> : releaseText}
               </span>
               <Caption1>{releaseDate}</Caption1>
-                <div style={{ marginTop: '10px' }}>
-                  <a
-                    href="https://apps.microsoft.com/detail/9PN58CG1P20L?referrer=appbadge&cid=sametcn99&mode=full"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Get it from Microsoft Store"
-                  >
-                    <img
-                      src="https://get.microsoft.com/images/en-us%20dark.svg"
-                      width="160"
-                      alt="Get it from Microsoft Store"
-                      style={{ display: 'block' }}
-                    />
-                  </a>
-                </div>
+              <div style={{ marginTop: '10px' }}>
+                <a
+                  href="https://apps.microsoft.com/detail/9PN58CG1P20L?referrer=appbadge&cid=sametcn99&mode=full"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Get it from Microsoft Store"
+                >
+                  <img
+                    src="https://get.microsoft.com/images/en-us%20dark.svg"
+                    width="160"
+                    alt="Get it from Microsoft Store"
+                    style={{ display: 'block' }}
+                  />
+                </a>
+              </div>
             </aside>
           </div>
 

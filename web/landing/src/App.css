@@ -32,11 +32,6 @@ section {
   animation: reveal-up 580ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-main > section {
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 720px;
-}
-
 header {
   animation: reveal-down 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
