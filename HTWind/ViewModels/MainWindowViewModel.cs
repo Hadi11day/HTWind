@@ -27,6 +27,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         AddWidgetCommand = new RelayCommand(_ => AddWidget());
         ChangeVisibilityCommand = new RelayCommand(model => ApplyVisibility(model as WidgetModel));
         ChangePinStateCommand = new RelayCommand(model => ApplyPinState(model as WidgetModel));
+        ResetWidgetPositionCommand = new RelayCommand(model => ResetWidgetPosition(model as WidgetModel));
         EditWidgetCommand = new RelayCommand(model => OpenEditor(model as WidgetModel));
         RemoveWidgetCommand = new RelayCommand(model => RemoveWidget(model as WidgetModel));
     }
@@ -68,6 +69,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand ChangePinStateCommand { get; }
 
     public ICommand EditWidgetCommand { get; }
+
+    public ICommand ResetWidgetPositionCommand { get; }
 
     public ICommand RemoveWidgetCommand { get; }
 
@@ -119,6 +122,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _widgetManager.OpenEditor(model);
+    }
+
+    private void ResetWidgetPosition(WidgetModel? model)
+    {
+        if (model is null)
+        {
+            return;
+        }
+
+        _widgetManager.ResetWidgetPosition(model);
     }
 
     private void RemoveWidget(WidgetModel? model)

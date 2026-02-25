@@ -124,7 +124,11 @@ public class WidgetManager : IWidgetManager
                     Top = state.Top,
                     WidgetWidth = state.WidgetWidth,
                     WidgetHeight = state.WidgetHeight,
-                    MonitorDeviceName = state.MonitorDeviceName
+                    MonitorDeviceName = state.MonitorDeviceName,
+                    PreferredMonitorDeviceName = state.PreferredMonitorDeviceName,
+                    MonitorPlacements = (state.MonitorPlacements ?? [])
+                        .Where(placement => !string.IsNullOrWhiteSpace(placement.MonitorDeviceName))
+                        .ToList()
                 };
 
                 CreateAndTrackWidgetWindow(model, true);
@@ -273,13 +277,22 @@ public class WidgetManager : IWidgetManager
             return;
         }
 
-        if (model.IsVisible && _geometryService.EnsureVisibleOnAvailableDisplay(window, model))
+        if (!model.IsVisible)
+        {
+            _geometryService.CaptureGeometry(window, model);
+            ScheduleSave();
+            window.SetRuntimeVisibility(false);
+            return;
+        }
+
+        RestoreWindowGeometryFromModel(window, model);
+        if (_geometryService.EnsureVisibleOnAvailableDisplay(window, model))
         {
             _geometryService.CaptureGeometry(window, model);
             ScheduleSave();
         }
 
-        window.SetRuntimeVisibility(model.IsVisible);
+        window.SetRuntimeVisibility(true);
     }
 
     public void ApplyPinState(WidgetModel model)
@@ -292,6 +305,39 @@ public class WidgetManager : IWidgetManager
         }
 
         window.Topmost = model.IsPinned;
+    }
+
+    public void ResetWidgetPosition(WidgetModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (!_windowsById.TryGetValue(model.Id, out var window))
+        {
+            if (string.IsNullOrWhiteSpace(model.FilePath) || !File.Exists(model.FilePath))
+            {
+                return;
+            }
+
+            var hasPersistedGeometry =
+                model.Left.HasValue
+                || model.Top.HasValue
+                || model.WidgetWidth.HasValue
+                || model.WidgetHeight.HasValue;
+            CreateAndTrackWidgetWindow(model, hasPersistedGeometry);
+
+            if (!_windowsById.TryGetValue(model.Id, out window))
+            {
+                return;
+            }
+        }
+
+        _geometryService.ResetToPrimaryDisplayCenter(
+            window,
+            model,
+            DefaultWidgetWidth,
+            DefaultWidgetHeight
+        );
+        ScheduleSave();
     }
 
     public void RemoveWidget(WidgetModel model)
@@ -430,6 +476,8 @@ public class WidgetManager : IWidgetManager
             || e.PropertyName == nameof(WidgetModel.WidgetWidth)
             || e.PropertyName == nameof(WidgetModel.WidgetHeight)
             || e.PropertyName == nameof(WidgetModel.MonitorDeviceName)
+            || e.PropertyName == nameof(WidgetModel.PreferredMonitorDeviceName)
+            || e.PropertyName == nameof(WidgetModel.MonitorPlacements)
         )
         {
             ScheduleSave();
@@ -482,7 +530,20 @@ public class WidgetManager : IWidgetManager
                 Top = model.Top,
                 WidgetWidth = model.WidgetWidth,
                 WidgetHeight = model.WidgetHeight,
-                MonitorDeviceName = model.MonitorDeviceName
+                MonitorDeviceName = model.MonitorDeviceName,
+                PreferredMonitorDeviceName = model.PreferredMonitorDeviceName,
+                MonitorPlacements = model.MonitorPlacements
+                    .Where(placement => !string.IsNullOrWhiteSpace(placement.MonitorDeviceName))
+                    .Select(placement => new WidgetMonitorPlacement
+                    {
+                        MonitorDeviceName = placement.MonitorDeviceName,
+                        Left = placement.Left,
+                        Top = placement.Top,
+                        Width = placement.Width,
+                        Height = placement.Height,
+                        LastSeenAtUtc = placement.LastSeenAtUtc
+                    })
+                    .ToList()
             })
         );
     }
@@ -520,6 +581,29 @@ public class WidgetManager : IWidgetManager
         if (hasRelocatedWidget)
         {
             ScheduleSave();
+        }
+    }
+
+    private static void RestoreWindowGeometryFromModel(WidgetWindow window, WidgetModel model)
+    {
+        if (model.WidgetWidth.HasValue && model.WidgetWidth.Value > 0)
+        {
+            window.Width = model.WidgetWidth.Value;
+        }
+
+        if (model.WidgetHeight.HasValue && model.WidgetHeight.Value > 0)
+        {
+            window.Height = model.WidgetHeight.Value;
+        }
+
+        if (model.Left.HasValue)
+        {
+            window.Left = model.Left.Value;
+        }
+
+        if (model.Top.HasValue)
+        {
+            window.Top = model.Top.Value;
         }
     }
 }

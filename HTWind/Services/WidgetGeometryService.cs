@@ -21,7 +21,7 @@ public sealed class WidgetGeometryService : IWidgetGeometryService
         IntPtr dwData
     );
 
-    public void CaptureGeometry(WidgetWindow window, WidgetModel model)
+    public void CaptureGeometry(WidgetWindow window, WidgetModel model, bool updatePreferredMonitor = true)
     {
         ArgumentNullException.ThrowIfNull(window);
         ArgumentNullException.ThrowIfNull(model);
@@ -30,7 +30,33 @@ public sealed class WidgetGeometryService : IWidgetGeometryService
         model.Top = window.Top;
         model.WidgetWidth = window.Width;
         model.WidgetHeight = window.Height;
-        model.MonitorDeviceName = GetMonitorDeviceName(window);
+
+        var currentMonitorDeviceName = GetMonitorDeviceName(window);
+        model.MonitorDeviceName = currentMonitorDeviceName;
+
+        if (!string.IsNullOrWhiteSpace(currentMonitorDeviceName))
+        {
+            UpdateMonitorPlacement(
+                model,
+                currentMonitorDeviceName,
+                window.Left,
+                window.Top,
+                window.Width,
+                window.Height
+            );
+
+            if (updatePreferredMonitor)
+            {
+                var hasPreferredMonitor = !string.IsNullOrWhiteSpace(model.PreferredMonitorDeviceName);
+                var preferredMonitorConnected =
+                    hasPreferredMonitor && IsMonitorConnected(model.PreferredMonitorDeviceName!);
+
+                if (!hasPreferredMonitor || preferredMonitorConnected)
+                {
+                    model.PreferredMonitorDeviceName = currentMonitorDeviceName;
+                }
+            }
+        }
     }
 
     public void ApplyPersistedGeometry(
@@ -46,7 +72,23 @@ public sealed class WidgetGeometryService : IWidgetGeometryService
         window.Width = model.WidgetWidth.GetValueOrDefault(defaultWidth);
         window.Height = model.WidgetHeight.GetValueOrDefault(defaultHeight);
 
-        var targetWorkArea = ResolveTargetMonitorWorkArea(model.MonitorDeviceName);
+        var connectedMonitors = GetConnectedMonitors();
+        var targetMonitorDeviceName = ResolveBestAvailableMonitor(model, connectedMonitors);
+        var targetWorkArea = ResolveTargetMonitorWorkArea(targetMonitorDeviceName);
+
+        if (
+            targetMonitorDeviceName is not null
+            && TryGetPlacement(model, targetMonitorDeviceName, out var monitorPlacement)
+        )
+        {
+            window.Left = monitorPlacement.Left;
+            window.Top = monitorPlacement.Top;
+            window.Width = monitorPlacement.Width;
+            window.Height = monitorPlacement.Height;
+
+            ClampWindowToWorkArea(window, targetWorkArea);
+            return;
+        }
 
         if (model.Left.HasValue && model.Top.HasValue)
         {
@@ -75,24 +117,229 @@ public sealed class WidgetGeometryService : IWidgetGeometryService
         CenterWindowOnWorkArea(window, null);
     }
 
+    public void ResetToPrimaryDisplayCenter(
+        WidgetWindow window,
+        WidgetModel model,
+        double defaultWidth,
+        double defaultHeight
+    )
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (window.Width <= 0)
+        {
+            window.Width = model.WidgetWidth.GetValueOrDefault(defaultWidth);
+        }
+
+        if (window.Height <= 0)
+        {
+            window.Height = model.WidgetHeight.GetValueOrDefault(defaultHeight);
+        }
+
+        CenterWindowOnWorkArea(window, null);
+        CaptureGeometry(window, model);
+    }
+
     public bool EnsureVisibleOnAvailableDisplay(WidgetWindow window, WidgetModel model)
     {
         ArgumentNullException.ThrowIfNull(window);
         ArgumentNullException.ThrowIfNull(model);
 
-        var hasStoredMonitor = !string.IsNullOrWhiteSpace(model.MonitorDeviceName);
-        var targetWorkArea = ResolveTargetMonitorWorkArea(model.MonitorDeviceName);
-        var isStoredMonitorConnected = !hasStoredMonitor || targetWorkArea.HasValue;
-        var isWindowOnAnyScreen = IsOnAnyScreen(window.Left, window.Top, window.Width, window.Height);
+        var connectedMonitors = GetConnectedMonitors();
+        var preferredMonitorConnected =
+            !string.IsNullOrWhiteSpace(model.PreferredMonitorDeviceName)
+            && connectedMonitors.ContainsKey(model.PreferredMonitorDeviceName);
 
-        if (isStoredMonitorConnected && isWindowOnAnyScreen)
+        if (preferredMonitorConnected)
+        {
+            var preferredMonitorName = model.PreferredMonitorDeviceName!;
+            var preferredWorkArea = connectedMonitors[preferredMonitorName];
+
+            if (TryGetPlacement(model, preferredMonitorName, out var preferredPlacement))
+            {
+                if (
+                    Math.Abs(window.Left - preferredPlacement.Left) > 0.5
+                    || Math.Abs(window.Top - preferredPlacement.Top) > 0.5
+                    || Math.Abs(window.Width - preferredPlacement.Width) > 0.5
+                    || Math.Abs(window.Height - preferredPlacement.Height) > 0.5
+                )
+                {
+                    window.Left = preferredPlacement.Left;
+                    window.Top = preferredPlacement.Top;
+                    window.Width = preferredPlacement.Width;
+                    window.Height = preferredPlacement.Height;
+                    ClampWindowToWorkArea(window, preferredWorkArea);
+                    return true;
+                }
+            }
+
+            var preferredWindowRect = new Rect(window.Left, window.Top, window.Width, window.Height);
+            if (preferredWindowRect.IntersectsWith(preferredWorkArea))
+            {
+                return false;
+            }
+
+            CenterWindowOnWorkArea(window, preferredWorkArea);
+            ClampWindowToWorkArea(window, preferredWorkArea);
+            return true;
+        }
+
+        var hasStoredMonitor = !string.IsNullOrWhiteSpace(model.MonitorDeviceName);
+        var targetMonitorDeviceName = ResolveBestAvailableMonitor(model, connectedMonitors);
+        var targetWorkArea = ResolveTargetMonitorWorkArea(targetMonitorDeviceName);
+        var windowRect = new Rect(window.Left, window.Top, window.Width, window.Height);
+
+        if (targetWorkArea.HasValue)
+        {
+            var target = targetWorkArea.Value;
+
+            // Keep exact position when the window is already on the stored monitor.
+            if (windowRect.IntersectsWith(target))
+            {
+                return false;
+            }
+
+            // Stored monitor exists but the window is no longer on that monitor.
+            CenterWindowOnWorkArea(window, targetWorkArea);
+            ClampWindowToWorkArea(window, targetWorkArea);
+            return true;
+        }
+
+        var isWindowOnAnyScreen = IsOnAnyScreen(window.Left, window.Top, window.Width, window.Height);
+        if (!hasStoredMonitor && isWindowOnAnyScreen)
         {
             return false;
         }
 
+        // Stored monitor is disconnected (or unknown); relocate to a safe visible location.
         CenterWindowOnWorkArea(window, null);
         ClampWindowToWorkArea(window, null);
         return true;
+    }
+
+    private static string? ResolveBestAvailableMonitor(
+        WidgetModel model,
+        IReadOnlyDictionary<string, Rect> connectedMonitors
+    )
+    {
+        if (
+            !string.IsNullOrWhiteSpace(model.PreferredMonitorDeviceName)
+            && connectedMonitors.ContainsKey(model.PreferredMonitorDeviceName)
+        )
+        {
+            return model.PreferredMonitorDeviceName;
+        }
+
+        var fallback = model.MonitorPlacements
+            .Where(placement =>
+                !string.IsNullOrWhiteSpace(placement.MonitorDeviceName)
+                && connectedMonitors.ContainsKey(placement.MonitorDeviceName!)
+            )
+            .OrderByDescending(placement => placement.LastSeenAtUtc)
+            .FirstOrDefault();
+
+        if (!string.IsNullOrWhiteSpace(fallback?.MonitorDeviceName))
+        {
+            return fallback.MonitorDeviceName;
+        }
+
+        if (
+            !string.IsNullOrWhiteSpace(model.MonitorDeviceName)
+            && connectedMonitors.ContainsKey(model.MonitorDeviceName)
+        )
+        {
+            return model.MonitorDeviceName;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetPlacement(
+        WidgetModel model,
+        string monitorDeviceName,
+        out WidgetMonitorPlacement placement
+    )
+    {
+        var existingPlacement = model.MonitorPlacements.FirstOrDefault(existing =>
+            string.Equals(existing.MonitorDeviceName, monitorDeviceName, StringComparison.OrdinalIgnoreCase)
+        );
+
+        if (existingPlacement is null)
+        {
+            placement = new WidgetMonitorPlacement();
+            return false;
+        }
+
+        placement = existingPlacement;
+
+        if (placement.Width <= 0 || placement.Height <= 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void UpdateMonitorPlacement(
+        WidgetModel model,
+        string monitorDeviceName,
+        double left,
+        double top,
+        double width,
+        double height
+    )
+    {
+        var existing = model.MonitorPlacements.FirstOrDefault(placement =>
+            string.Equals(placement.MonitorDeviceName, monitorDeviceName, StringComparison.OrdinalIgnoreCase)
+        );
+
+        if (existing is null)
+        {
+            existing = new WidgetMonitorPlacement { MonitorDeviceName = monitorDeviceName };
+            model.MonitorPlacements.Add(existing);
+        }
+
+        existing.Left = left;
+        existing.Top = top;
+        existing.Width = width;
+        existing.Height = height;
+        existing.LastSeenAtUtc = DateTimeOffset.UtcNow;
+    }
+
+    private static bool IsMonitorConnected(string monitorDeviceName)
+    {
+        return GetConnectedMonitors().ContainsKey(monitorDeviceName);
+    }
+
+    private static Dictionary<string, Rect> GetConnectedMonitors()
+    {
+        var monitors = new Dictionary<string, Rect>(StringComparer.OrdinalIgnoreCase);
+
+        EnumDisplayMonitors(
+            IntPtr.Zero,
+            IntPtr.Zero,
+            (monitor, _, _, _) =>
+            {
+                var info = new MonitorInfoEx { CbSize = Marshal.SizeOf<MonitorInfoEx>() };
+                if (!GetMonitorInfo(monitor, ref info) || string.IsNullOrWhiteSpace(info.SzDevice))
+                {
+                    return true;
+                }
+
+                monitors[info.SzDevice] = new Rect(
+                    info.RcWork.Left,
+                    info.RcWork.Top,
+                    info.RcWork.Right - info.RcWork.Left,
+                    info.RcWork.Bottom - info.RcWork.Top
+                );
+
+                return true;
+            },
+            IntPtr.Zero
+        );
+
+        return monitors;
     }
 
     private static void CenterWindowOnWorkArea(WidgetWindow window, Rect? workArea)

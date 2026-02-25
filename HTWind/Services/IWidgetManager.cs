@@ -13,6 +13,7 @@ public interface IWidgetManager
     void OpenEditor(WidgetModel model);
     void ApplyVisibility(WidgetModel model);
     void ApplyPinState(WidgetModel model);
+    void ResetWidgetPosition(WidgetModel model);
     void RemoveWidget(WidgetModel model);
     void CloseAll();
 }

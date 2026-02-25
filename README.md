@@ -17,6 +17,8 @@ It also supports running PowerShell commands when you need quick system actions.
 - Pin-on-top, visibility toggle, and persisted widget geometry/state
 - Startup toggle (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`)
 - Localization infrastructure (`resx` + `LocExtension`)
+- Built in code editor with syntax highlighting and live preview (hot reload)
+- Open-source and community-driven development
 
 ## Built-In Widgets
 

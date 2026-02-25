@@ -119,6 +119,19 @@ public partial class MainWindow : FluentWindow
         menu.IsOpen = true;
     }
 
+    private void WidgetActionsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement target || target.ContextMenu is not ContextMenu menu)
+        {
+            return;
+        }
+
+        menu.DataContext = target.DataContext;
+        menu.PlacementTarget = target;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
     private void CreateWithEditorMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var createWindow = new CreateWidgetWithEditorWindow

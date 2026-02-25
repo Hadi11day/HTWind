@@ -23,4 +23,8 @@ public sealed class WidgetStateRecord
     public double? WidgetHeight { get; set; }
 
     public string? MonitorDeviceName { get; set; }
+
+    public string? PreferredMonitorDeviceName { get; set; }
+
+    public List<WidgetMonitorPlacement> MonitorPlacements { get; set; } = [];
 }

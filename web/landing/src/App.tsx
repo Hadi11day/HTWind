@@ -613,6 +613,8 @@ function App() {
 
   const highlights = [
     { value: '20+', label: 'Built-in templates' },
+    { value: 'Hot Reload', label: 'Live widget preview while editing' },
+    { value: 'Built-in Editor', label: 'Create and edit widgets in-app' },
     { value: 'WebView2', label: 'Native rendering stack' },
     { value: 'PowerShell API', label: 'Host-side automation bridge' },
     { value: 'Open Source', label: 'GPL 3.0 licensed project' },

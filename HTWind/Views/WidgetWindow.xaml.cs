@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 using HTWind.Services;
 
@@ -19,16 +20,15 @@ public partial class WidgetWindow : Window
     private const double MinWidgetWidth = 160;
     private const double MinWidgetHeight = 100;
     private readonly IWidgetHostApiService _widgetHostApiService;
+    private readonly DispatcherTimer _interactionStateTimer;
     private static readonly JsonSerializerOptions HostBridgeJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true
     };
-    private Point _dragStartScreen;
-    private Point _dragStartWindow;
-
     private bool _isDragging;
     private Task? _initializationTask;
+    private bool _isDesktopInteractionModifierActive;
     private bool _isSuspended;
     private bool _isWebViewReady;
 
@@ -38,6 +38,8 @@ public partial class WidgetWindow : Window
     private Point _resizeStartScreen;
     private Size _resizeStartSize;
     private Point _resizeStartWindow;
+    private const int VirtualKeyAlt = 0x12;
+    private const int AsyncKeyStatePressedMask = 0x8000;
 
     public WidgetWindow(WidgetModel model, IWidgetHostApiService widgetHostApiService)
     {
@@ -51,6 +53,13 @@ public partial class WidgetWindow : Window
             widgetHostApiService ?? throw new ArgumentNullException(nameof(widgetHostApiService));
         Model.PropertyChanged += Model_PropertyChanged;
 
+        _interactionStateTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(120)
+        };
+        _interactionStateTimer.Tick += InteractionStateTimer_Tick;
+        Loaded += WidgetWindow_Loaded;
+
         UpdateOverlay();
         SetRuntimeVisibility(Model.IsVisible);
     }
@@ -60,6 +69,43 @@ public partial class WidgetWindow : Window
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out NativePoint point);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int virtualKeyCode);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    private void WidgetWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        _interactionStateTimer.Start();
+    }
+
+    private void InteractionStateTimer_Tick(object? sender, EventArgs e)
+    {
+        // Keep the interaction mode stable while pointer gesture is active.
+        if (_isDragging || _isResizing)
+        {
+            return;
+        }
+
+        RefreshDesktopInteractionState();
+    }
+
+    private void RefreshDesktopInteractionState()
+    {
+        var isDesktopModifierActive = IsDesktopModifierActive();
+        if (_isDesktopInteractionModifierActive == isDesktopModifierActive)
+        {
+            return;
+        }
+
+        _isDesktopInteractionModifierActive = isDesktopModifierActive;
+        UpdateOverlay();
+    }
 
     private void Model_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -81,12 +127,14 @@ public partial class WidgetWindow : Window
 
     private void UpdateOverlay()
     {
-        if (Model.IsLocked)
+        var isInteractionOverlayEnabled = IsInteractionOverlayEnabled();
+
+        if (!isInteractionOverlayEnabled)
         {
             DragOverlay.Visibility = Visibility.Collapsed;
             ResizeHandles.Visibility = Visibility.Collapsed;
+            webView.IsHitTestVisible = true;
 
-            // Locked mode should show only HTML content without widget chrome.
             WidgetChrome.Background = Brushes.Transparent;
             WidgetChrome.CornerRadius = new CornerRadius(0);
             WebViewHost.Margin = new Thickness(0);
@@ -95,6 +143,7 @@ public partial class WidgetWindow : Window
         {
             DragOverlay.Visibility = Visibility.Visible;
             ResizeHandles.Visibility = Visibility.Visible;
+            webView.IsHitTestVisible = false;
 
             WidgetChrome.Background = new SolidColorBrush(
                 Color.FromArgb(176, 26, 26, 26)
@@ -241,28 +290,30 @@ public partial class WidgetWindow : Window
 
     private void DragOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (Model.IsLocked || e.LeftButton != MouseButtonState.Pressed)
+        if (!IsInteractionOverlayEnabled() || e.LeftButton != MouseButtonState.Pressed)
         {
             return;
         }
 
         _isDragging = true;
-        _dragStartScreen = GetCursorScreenDip();
-        _dragStartWindow = new Point(Left, Top);
-        DragOverlay.CaptureMouse();
+
+        try
+        {
+            DragMove();
+        }
+        finally
+        {
+            _isDragging = false;
+            RefreshDesktopInteractionState();
+        }
+
         e.Handled = true;
     }
 
     private void DragOverlay_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!_isDragging || e.LeftButton != MouseButtonState.Pressed)
-        {
-            return;
-        }
-
-        var currentScreen = GetCursorScreenDip();
-        Left = _dragStartWindow.X + (currentScreen.X - _dragStartScreen.X);
-        Top = _dragStartWindow.Y + (currentScreen.Y - _dragStartScreen.Y);
+        _ = sender;
+        _ = e;
     }
 
     private void DragOverlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -273,7 +324,7 @@ public partial class WidgetWindow : Window
         }
 
         _isDragging = false;
-        DragOverlay.ReleaseMouseCapture();
+        RefreshDesktopInteractionState();
     }
 
     private void TopLeftGrip_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -298,7 +349,7 @@ public partial class WidgetWindow : Window
 
     private void StartResize(CornerResizeMode mode, MouseButtonEventArgs e)
     {
-        if (Model.IsLocked || e.LeftButton != MouseButtonState.Pressed)
+        if (!IsInteractionOverlayEnabled() || e.LeftButton != MouseButtonState.Pressed)
         {
             return;
         }
@@ -345,6 +396,8 @@ public partial class WidgetWindow : Window
         {
             sourceElement.ReleaseMouseCapture();
         }
+
+        RefreshDesktopInteractionState();
     }
 
     private void ApplyResize(double deltaX, double deltaY)
@@ -436,6 +489,9 @@ public partial class WidgetWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _interactionStateTimer.Stop();
+        _interactionStateTimer.Tick -= InteractionStateTimer_Tick;
+        Loaded -= WidgetWindow_Loaded;
         Model.PropertyChanged -= Model_PropertyChanged;
         if (webView.CoreWebView2 is not null)
         {
@@ -593,6 +649,45 @@ public partial class WidgetWindow : Window
                                  };
                              })();
                              """;
+    }
+
+    private bool IsInteractionOverlayEnabled()
+    {
+        return !Model.IsLocked || _isDesktopInteractionModifierActive;
+    }
+
+    private bool IsDesktopModifierActive()
+    {
+        if (!Model.IsLocked)
+        {
+            return false;
+        }
+
+        var isAltDown = (GetAsyncKeyState(VirtualKeyAlt) & AsyncKeyStatePressedMask) != 0;
+        if (!isAltDown)
+        {
+            return false;
+        }
+
+        return IsDesktopFocused();
+    }
+
+    private static bool IsDesktopFocused()
+    {
+        var foregroundWindow = GetForegroundWindow();
+        if (foregroundWindow == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var className = new StringBuilder(64);
+        if (GetClassName(foregroundWindow, className, className.Capacity) <= 0)
+        {
+            return false;
+        }
+
+        return string.Equals(className.ToString(), "Progman", StringComparison.Ordinal)
+            || string.Equals(className.ToString(), "WorkerW", StringComparison.Ordinal);
     }
 
     private static string GetWebViewUserDataFolder()

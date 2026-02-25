@@ -58,6 +58,12 @@
   <data name="MainWindow_Edit" xml:space="preserve">
     <value>Edit</value>
   </data>
+  <data name="MainWindow_ResetPosition" xml:space="preserve">
+    <value>Reset Position</value>
+  </data>
+  <data name="MainWindow_WidgetActions" xml:space="preserve">
+    <value>Widget actions</value>
+  </data>
   <data name="MainWindow_EmptyTitle" xml:space="preserve">
     <value>No widgets added yet</value>
   </data>

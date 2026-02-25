@@ -112,6 +112,26 @@ public class WidgetModel : INotifyPropertyChanged
         }
     }
 
+    public string? PreferredMonitorDeviceName
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public List<WidgetMonitorPlacement> MonitorPlacements
+    {
+        get;
+        set
+        {
+            field = value;
+            OnPropertyChanged();
+        }
+    } = [];
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
