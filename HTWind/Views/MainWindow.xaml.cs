@@ -1,13 +1,12 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media.Imaging;
 
 using HTWind.Services;
 using HTWind.ViewModels;
+using HTWind.Views.Pages;
 
 using Wpf.Ui.Controls;
 
@@ -18,12 +17,12 @@ namespace HTWind;
 /// </summary>
 public partial class MainWindow : FluentWindow
 {
-    private const string DiscussionsUrl = "https://github.com/sametcn99/HTWind/discussions";
-
     private readonly MainWindowViewModel _viewModel;
     private readonly IWidgetManager _widgetManager;
+    private readonly Dictionary<string, UserControl> _pageCache = new();
 
     private bool _isExiting;
+    private bool _isNavigationReady;
     private IThemeService? _themeService;
 
     public MainWindow(MainWindowViewModel viewModel, IWidgetManager widgetManager)
@@ -36,6 +35,7 @@ public partial class MainWindow : FluentWindow
         DataContext = _viewModel;
         _viewModel.ThemeRequested += ViewModel_ThemeRequested;
         _viewModel.RefreshStartupState();
+        Loaded += MainWindow_Loaded;
 
         try
         {
@@ -54,6 +54,114 @@ public partial class MainWindow : FluentWindow
         {
             // Ignore icon extraction errors
         }
+
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_isNavigationReady)
+        {
+            return;
+        }
+
+        _isNavigationReady = true;
+        NavigateUsingItem(HomeNavItem, "Home");
+    }
+
+    private void HomeNavItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isNavigationReady)
+        {
+            return;
+        }
+
+        NavigateUsingItem(HomeNavItem, "Home");
+    }
+
+    private void SettingsNavItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isNavigationReady)
+        {
+            return;
+        }
+
+        NavigateUsingItem(SettingsNavItem, "Settings");
+    }
+
+    private void AboutNavItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isNavigationReady)
+        {
+            return;
+        }
+
+        NavigateUsingItem(AboutNavItem, "About");
+    }
+
+    private void NavigateUsingItem(NavigationViewItem item, string tag)
+    {
+        UpdateActiveNavigationItem(item);
+        item.Activate(NavigationView);
+        NavigateTo(tag);
+    }
+
+    private void UpdateActiveNavigationItem(NavigationViewItem activeItem)
+    {
+        if (!ReferenceEquals(activeItem, HomeNavItem))
+        {
+            HomeNavItem.Deactivate(NavigationView);
+        }
+
+        if (!ReferenceEquals(activeItem, SettingsNavItem))
+        {
+            SettingsNavItem.Deactivate(NavigationView);
+        }
+
+        if (!ReferenceEquals(activeItem, AboutNavItem))
+        {
+            AboutNavItem.Deactivate(NavigationView);
+        }
+    }
+
+    private void NavigateTo(string tag)
+    {
+        if (!_pageCache.TryGetValue(tag, out var page))
+        {
+            page = tag switch
+            {
+                "Home" => CreateHomePage(),
+                "Settings" => CreateSettingsPage(),
+                "About" => new AboutPage(),
+                _ => null
+            };
+
+            if (page is null)
+            {
+                return;
+            }
+
+            _pageCache[tag] = page;
+        }
+
+        NavigationView.ReplaceContent(page, null);
+    }
+
+    private HomePage CreateHomePage()
+    {
+        var homePage = new HomePage(_widgetManager)
+        {
+            DataContext = _viewModel
+        };
+        return homePage;
+    }
+
+    private SettingsPage CreateSettingsPage()
+    {
+        var settingsPage = new SettingsPage(_viewModel)
+        {
+            DataContext = _viewModel
+        };
+        return settingsPage;
     }
 
     private void Window_Closing(object sender, CancelEventArgs e)
@@ -63,16 +171,6 @@ public partial class MainWindow : FluentWindow
             e.Cancel = true;
             Hide();
         }
-    }
-
-    private void RunOnStartupToggle_Checked(object sender, RoutedEventArgs e)
-    {
-        _viewModel.SetRunOnStartup(true);
-    }
-
-    private void RunOnStartupToggle_Unchecked(object sender, RoutedEventArgs e)
-    {
-        _viewModel.SetRunOnStartup(false);
     }
 
     private void TrayIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
@@ -96,78 +194,6 @@ public partial class MainWindow : FluentWindow
         Application.Current.Shutdown();
     }
 
-    private void About_Click(object sender, RoutedEventArgs e)
-    {
-        var aboutWindow = new AboutWindow
-        {
-            Owner = this,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
-
-        aboutWindow.ShowDialog();
-    }
-
-    private void AddWidgetOptionsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement target || target.ContextMenu is not ContextMenu menu)
-        {
-            return;
-        }
-
-        menu.PlacementTarget = target;
-        menu.Placement = PlacementMode.Bottom;
-        menu.IsOpen = true;
-    }
-
-    private void WidgetActionsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement target || target.ContextMenu is not ContextMenu menu)
-        {
-            return;
-        }
-
-        menu.DataContext = target.DataContext;
-        menu.PlacementTarget = target;
-        menu.Placement = PlacementMode.Bottom;
-        menu.IsOpen = true;
-    }
-
-    private void CreateWithEditorMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        var createWindow = new CreateWidgetWithEditorWindow
-        {
-            Owner = this,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
-
-        if (createWindow.ShowDialog() != true)
-        {
-            return;
-        }
-
-        _widgetManager.CreateWidgetWithEditor(
-            createWindow.RequestedFileName,
-            createWindow.IsVisibleByDefault,
-            createWindow.EnableHotReload
-        );
-    }
-
-    private void FindMore_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = DiscussionsUrl,
-                UseShellExecute = true
-            });
-        }
-        catch
-        {
-            // Ignore failures opening external links.
-        }
-    }
-
     public void SetThemeService(IThemeService themeService)
     {
         _themeService =
@@ -186,6 +212,7 @@ public partial class MainWindow : FluentWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        Loaded -= MainWindow_Loaded;
         _viewModel.ThemeRequested -= ViewModel_ThemeRequested;
         _widgetManager.CloseAll();
         base.OnClosed(e);

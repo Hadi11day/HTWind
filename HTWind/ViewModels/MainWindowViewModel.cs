@@ -10,6 +10,7 @@ namespace HTWind.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private readonly IDeveloperModeService _developerModeService;
     private readonly IFileDialogService _fileDialogService;
     private readonly IStartupRegistrationService _startupRegistrationService;
     private readonly IWidgetManager _widgetManager;
@@ -17,12 +18,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public MainWindowViewModel(
         IFileDialogService fileDialogService,
         IWidgetManager widgetManager,
-        IStartupRegistrationService startupRegistrationService
+        IStartupRegistrationService startupRegistrationService,
+        IDeveloperModeService developerModeService
     )
     {
         _fileDialogService = fileDialogService ?? throw new ArgumentNullException(nameof(fileDialogService));
         _widgetManager = widgetManager ?? throw new ArgumentNullException(nameof(widgetManager));
         _startupRegistrationService = startupRegistrationService ?? throw new ArgumentNullException(nameof(startupRegistrationService));
+        _developerModeService = developerModeService ?? throw new ArgumentNullException(nameof(developerModeService));
 
         AddWidgetCommand = new RelayCommand(_ => AddWidget());
         ChangeVisibilityCommand = new RelayCommand(model => ApplyVisibility(model as WidgetModel));
@@ -62,6 +65,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsDeveloperModeEnabled
+    {
+        get => _developerModeService.IsEnabled();
+        set
+        {
+            _developerModeService.SetEnabled(value);
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand AddWidgetCommand { get; }
 
     public ICommand ChangeVisibilityCommand { get; }
@@ -79,11 +92,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void RefreshStartupState()
     {
         OnPropertyChanged(nameof(IsRunOnStartupEnabled));
+        OnPropertyChanged(nameof(IsDeveloperModeEnabled));
     }
 
     public void SetRunOnStartup(bool enabled)
     {
         IsRunOnStartupEnabled = enabled;
+    }
+
+    public void SetDeveloperMode(bool enabled)
+    {
+        IsDeveloperModeEnabled = enabled;
     }
 
     private void AddWidget()

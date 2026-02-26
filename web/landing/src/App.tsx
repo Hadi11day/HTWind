@@ -4,6 +4,10 @@ import {
   Button,
   Card,
   Caption1,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
   FluentProvider,
   Link,
   Spinner,
@@ -19,11 +23,13 @@ import {
   ArrowDownload24Regular,
   Code24Regular,
   Desktop24Regular,
+  Dismiss24Regular,
   Open24Regular,
   Rocket24Regular,
   WindowWrench24Regular,
 } from '@fluentui/react-icons'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactZoomPanPinchRef, TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'
 import './App.css'
 
 const GITHUB_REPOSITORY_URL = 'https://github.com/sametcn99/HTWind'
@@ -332,15 +338,6 @@ const useStyles = makeStyles({
     color: 'rgba(255, 255, 255, 0.54)',
     lineHeight: '1.65',
   },
-  screenshotContainer: {
-    marginTop: '16px',
-    maxWidth: '720px',
-    marginInline: 'auto',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.08)'),
-    ...shorthands.borderRadius(tokens.borderRadiusXLarge),
-    overflow: 'hidden',
-  },
   screenshotImage: {
     width: '100%',
     height: 'auto',
@@ -349,6 +346,21 @@ const useStyles = makeStyles({
     ':hover': {
       transform: 'scale(1.01)',
     },
+  },
+  screenshotsGrid: {
+    display: 'grid',
+    gap: '16px',
+    gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
+    '@media (min-width: 768px)': {
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    },
+    marginTop: '16px',
+  },
+  screenshotCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    ...shorthands.border('1px', 'solid', 'rgba(255, 255, 255, 0.08)'),
+    ...shorthands.borderRadius(tokens.borderRadiusLarge),
+    overflow: 'hidden',
   },
   widgetsCard: {
     backgroundColor: 'rgba(28, 28, 28, 0.82)',
@@ -444,6 +456,68 @@ const useStyles = makeStyles({
     textAlign: 'center',
     ...shorthands.padding('8px', '0', '0', '0'),
   },
+  lightboxSurface: {
+    padding: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    maxWidth: '100vw',
+    maxHeight: '100vh',
+    width: '100vw',
+    height: '100vh',
+    ...shorthands.border('0'),
+    boxShadow: 'none',
+  },
+  lightboxContent: {
+    height: '100%',
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+    ...shorthands.padding(0),
+  },
+  lightboxBody: {
+    width: '100%',
+    height: '100%',
+    ...shorthands.padding(0),
+  },
+  lightboxImage: {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    objectFit: 'contain' as const,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: '20px',
+    right: '20px',
+    zIndex: '1000',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    color: '#ffffff',
+    ':hover': {
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      color: '#ffffff',
+    },
+  },
+  clickableScreenshot: {
+    cursor: 'zoom-in',
+  },
+  storeBadgeContainer: {
+    marginTop: '10px',
+  },
+  storeBadgeImage: {
+    display: 'block',
+  },
+  lightboxTransformRoot: {
+    width: '100%',
+    height: '100%',
+  },
+  lightboxTransformWrapper: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 })
 
 function formatReleaseDate(isoDate: string): string {
@@ -529,7 +603,9 @@ function App() {
   const [latestRelease, setLatestRelease] = useState<GitHubRelease | null>(null)
   const [isLoadingRelease, setIsLoadingRelease] = useState(true)
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null)
   const downloadMenuContainerRef = useRef<HTMLDivElement | null>(null)
+  const lightboxTransformRef = useRef<ReactZoomPanPinchRef | null>(null)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -714,7 +790,7 @@ function App() {
                 {isLoadingRelease ? <Spinner size="tiny" labelPosition="after" label="Loading" /> : releaseText}
               </span>
               <Caption1>{releaseDate}</Caption1>
-              <div style={{ marginTop: '10px' }}>
+              <div className={styles.storeBadgeContainer}>
                 <a
                   href="https://apps.microsoft.com/detail/9PN58CG1P20L?referrer=appbadge&cid=sametcn99&mode=full"
                   target="_blank"
@@ -725,7 +801,7 @@ function App() {
                     src="https://get.microsoft.com/images/en-us%20dark.svg"
                     width="160"
                     alt="Get it from Microsoft Store"
-                    style={{ display: 'block' }}
+                    className={styles.storeBadgeImage}
                   />
                 </a>
               </div>
@@ -902,14 +978,34 @@ function App() {
               environment without requiring heavy desktop shell replacements.
             </p>
 
-            <div className={styles.screenshotContainer}>
-              <img
-                src="/screenshot.png"
-                alt="HTWind Desktop App Screenshot - High-quality widgets on Windows 11"
-                className={styles.screenshotImage}
-                loading="lazy"
-                decoding="async"
-              />
+            <div className={styles.screenshotsGrid}>
+              {[
+                { src: '/app_screenshots/page_home.png', alt: 'HTWind Home - Widget Library' },
+                { src: '/app_screenshots/page_settings.png', alt: 'HTWind Settings - Customization' },
+                { src: '/app_screenshots/page_about.png', alt: 'HTWind About - Version Info' },
+              ].map((s) => (
+                <div
+                  key={s.src}
+                  className={mergeClasses(styles.screenshotCard, styles.clickableScreenshot)}
+                  onClick={() => setSelectedImage(s)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setSelectedImage(s)
+                    }
+                  }}
+                  aria-label={`View larger ${s.alt}`}
+                >
+                  <img
+                    src={s.src}
+                    alt={s.alt}
+                    className={styles.screenshotImage}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ))}
             </div>
           </Card>
         </section>
@@ -1011,6 +1107,50 @@ function App() {
           <Caption1>HTWind | Open-source desktop widget manager for Windows 11</Caption1>
         </footer>
       </main>
+
+      <Dialog
+        open={!!selectedImage}
+        onOpenChange={(_, data) => !data.open && setSelectedImage(null)}
+      >
+        <DialogSurface className={styles.lightboxSurface}>
+          <DialogBody className={styles.lightboxBody}>
+            <DialogContent className={styles.lightboxContent}>
+              <Button
+                appearance="subtle"
+                icon={<Dismiss24Regular />}
+                className={styles.closeButton}
+                onClick={() => setSelectedImage(null)}
+                aria-label="Close"
+              />
+              {selectedImage && (
+                <TransformWrapper
+                  ref={lightboxTransformRef}
+                  initialScale={1}
+                  minScale={1}
+                  maxScale={8}
+                  centerOnInit={true}
+                  centerZoomedOut={true}
+                >
+                  <TransformComponent
+                    wrapperClass={styles.lightboxTransformWrapper}
+                    contentClass={styles.lightboxTransformWrapper}
+                  >
+                    <img
+                      src={selectedImage.src}
+                      alt={selectedImage.alt}
+                      className={styles.lightboxImage}
+                      onLoad={() => {
+                        lightboxTransformRef.current?.resetTransform(0)
+                        lightboxTransformRef.current?.centerView(1, 0)
+                      }}
+                    />
+                  </TransformComponent>
+                </TransformWrapper>
+              )}
+            </DialogContent>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </FluentProvider>
   )
 }

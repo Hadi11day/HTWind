@@ -15,8 +15,9 @@ Create & Share:
 
 Official Links:
 - Repository & Documentation: https://github.com/sametcn99/HTWind
-- Community Showcases: https://github.com/sametcn99/HTWind/discussions
 - Bug Reports & Feature Requests: https://github.com/sametcn99/HTWind/issues
+- Community Showcases: https://github.com/sametcn99/HTWind/discussions
+- Reddit Community: https://www.reddit.com/r/HTWind/
 
 Your feedback and contributions help make HTWind better for everyone.
 

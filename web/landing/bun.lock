@@ -7,21 +7,22 @@
       "dependencies": {
         "@fluentui/react-components": "^9.73.0",
         "@fluentui/react-icons": "^2.0.319",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+        "react-zoom-pan-pinch": "^3.7.0",
       },
       "devDependencies": {
-        "@eslint/js": "^9.39.1",
-        "@types/node": "^24.10.1",
-        "@types/react": "^19.2.7",
+        "@eslint/js": "^9.39.3",
+        "@types/node": "^24.10.13",
+        "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
-        "@vitejs/plugin-react-swc": "^4.2.2",
-        "eslint": "^9.39.1",
+        "@vitejs/plugin-react-swc": "^4.2.3",
+        "eslint": "^9.39.3",
         "eslint-plugin-react-hooks": "^7.0.1",
-        "eslint-plugin-react-refresh": "^0.4.24",
+        "eslint-plugin-react-refresh": "^0.4.26",
         "globals": "^16.5.0",
         "typescript": "~5.9.3",
-        "typescript-eslint": "^8.48.0",
+        "typescript-eslint": "^8.56.1",
         "vite": "^7.3.1",
       },
     },
@@ -592,6 +593,8 @@
     "react": ["react@19.2.4", "", {}, "sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ=="],
 
     "react-dom": ["react-dom@19.2.4", "", { "dependencies": { "scheduler": "^0.27.0" }, "peerDependencies": { "react": "^19.2.4" } }, "sha512-AXJdLo8kgMbimY95O2aKQqsz2iWi9jMgKJhRBAxECE4IFxfcazB2LmzloIoibJI3C12IlY20+KFaLv+71bUJeQ=="],
+
+    "react-zoom-pan-pinch": ["react-zoom-pan-pinch@3.7.0", "", { "peerDependencies": { "react": "*", "react-dom": "*" } }, "sha512-UmReVZ0TxlKzxSbYiAj+LeGRW8s8LraAFTXRAxzMYnNRgGPsxCudwZKVkjvGmjtx7SW/hZamt69NUmGf4xrkXA=="],
 
     "resolve-from": ["resolve-from@4.0.0", "", {}, "sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g=="],
 

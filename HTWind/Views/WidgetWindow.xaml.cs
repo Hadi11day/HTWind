@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -11,15 +10,16 @@ using System.Windows.Threading;
 using HTWind.Services;
 
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 
 namespace HTWind;
 
 public partial class WidgetWindow : Window
 {
+    private readonly IDeveloperModeService _developerModeService;
     private const double MinWidgetWidth = 160;
     private const double MinWidgetHeight = 100;
     private readonly IWidgetHostApiService _widgetHostApiService;
+    private readonly IWebViewEnvironmentProvider _webViewEnvironmentProvider;
     private readonly DispatcherTimer _interactionStateTimer;
     private static readonly JsonSerializerOptions HostBridgeJsonOptions = new()
     {
@@ -41,17 +41,25 @@ public partial class WidgetWindow : Window
     private const int VirtualKeyAlt = 0x12;
     private const int AsyncKeyStatePressedMask = 0x8000;
 
-    public WidgetWindow(WidgetModel model, IWidgetHostApiService widgetHostApiService)
+    public WidgetWindow(
+        WidgetModel model,
+        IWidgetHostApiService widgetHostApiService,
+        IWebViewEnvironmentProvider webViewEnvironmentProvider,
+        IDeveloperModeService developerModeService
+    )
     {
         InitializeComponent();
-        webView.CreationProperties = new CoreWebView2CreationProperties
-        {
-            UserDataFolder = GetWebViewUserDataFolder()
-        };
         Model = model;
         _widgetHostApiService =
             widgetHostApiService ?? throw new ArgumentNullException(nameof(widgetHostApiService));
+        _webViewEnvironmentProvider =
+            webViewEnvironmentProvider
+            ?? throw new ArgumentNullException(nameof(webViewEnvironmentProvider));
+        _developerModeService =
+            developerModeService
+            ?? throw new ArgumentNullException(nameof(developerModeService));
         Model.PropertyChanged += Model_PropertyChanged;
+        _developerModeService.Changed += DeveloperModeService_Changed;
 
         _interactionStateTimer = new DispatcherTimer
         {
@@ -171,8 +179,9 @@ public partial class WidgetWindow : Window
             return;
         }
 
-        var env = await CoreWebView2Environment.CreateAsync(userDataFolder: GetWebViewUserDataFolder());
+        var env = await _webViewEnvironmentProvider.GetWidgetsEnvironmentAsync();
         await webView.EnsureCoreWebView2Async(env);
+        ApplyDeveloperModePolicy();
         await RegisterHostBridgeAsync();
         _isWebViewReady = true;
 
@@ -493,6 +502,7 @@ public partial class WidgetWindow : Window
         _interactionStateTimer.Tick -= InteractionStateTimer_Tick;
         Loaded -= WidgetWindow_Loaded;
         Model.PropertyChanged -= Model_PropertyChanged;
+        _developerModeService.Changed -= DeveloperModeService_Changed;
         if (webView.CoreWebView2 is not null)
         {
             webView.CoreWebView2.WebMessageReceived -= WebView_CoreWebView2_WebMessageReceived;
@@ -500,6 +510,36 @@ public partial class WidgetWindow : Window
 
         webView.Dispose();
         base.OnClosed(e);
+    }
+
+    private void DeveloperModeService_Changed(object? sender, EventArgs e)
+    {
+        _ = Dispatcher.BeginInvoke(new Action(() => _ = ApplyDeveloperModePolicyAsync()));
+    }
+
+    private async Task ApplyDeveloperModePolicyAsync()
+    {
+        // If the widget is visible, ensure the WebView is ready so policy changes apply immediately.
+        if (Model.IsVisible && !_isWebViewReady)
+        {
+            await EnsureInitializedAsync();
+        }
+
+        ApplyDeveloperModePolicy();
+    }
+
+    private void ApplyDeveloperModePolicy()
+    {
+        if (webView.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        var settings = webView.CoreWebView2.Settings;
+        var isDeveloperModeEnabled = _developerModeService.IsEnabled();
+
+        settings.AreDefaultContextMenusEnabled = isDeveloperModeEnabled;
+        settings.AreDevToolsEnabled = false;
     }
 
     private async Task RegisterHostBridgeAsync()
@@ -688,19 +728,6 @@ public partial class WidgetWindow : Window
 
         return string.Equals(className.ToString(), "Progman", StringComparison.Ordinal)
             || string.Equals(className.ToString(), "WorkerW", StringComparison.Ordinal);
-    }
-
-    private static string GetWebViewUserDataFolder()
-    {
-        var path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "HTWind",
-            "WebView2",
-            "Widgets"
-        );
-
-        Directory.CreateDirectory(path);
-        return path;
     }
 
     private sealed class WidgetHostApiRequest

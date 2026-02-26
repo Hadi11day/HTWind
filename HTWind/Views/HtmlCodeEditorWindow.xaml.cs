@@ -5,7 +5,6 @@ using HTWind.Localization;
 using HTWind.Services;
 
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.Wpf;
 
 using Wpf.Ui.Appearance;
 
@@ -44,10 +43,6 @@ public partial class HtmlCodeEditorWindow : FluentWindow
             htmlEditorService ?? throw new ArgumentNullException(nameof(htmlEditorService));
         _isInitialHotReloadEnabled = isInitialHotReloadEnabled;
         InitializeComponent();
-        EditorWebView.CreationProperties = new CoreWebView2CreationProperties
-        {
-            UserDataFolder = GetWebViewUserDataFolder()
-        };
         Loaded += HtmlCodeEditorWindow_Loaded;
     }
 
@@ -189,16 +184,4 @@ public partial class HtmlCodeEditorWindow : FluentWindow
         base.OnClosed(e);
     }
 
-    private static string GetWebViewUserDataFolder()
-    {
-        var path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "HTWind",
-            "WebView2",
-            "Editor"
-        );
-
-        Directory.CreateDirectory(path);
-        return path;
-    }
 }

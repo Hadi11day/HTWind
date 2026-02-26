@@ -131,6 +131,9 @@
   <data name="MainWindow_RunOnStartup" xml:space="preserve">
     <value>Run on Startup</value>
   </data>
+  <data name="MainWindow_DeveloperMode" xml:space="preserve">
+    <value>Developer Mode</value>
+  </data>
   <data name="MainWindow_Show" xml:space="preserve">
     <value>Show</value>
   </data>
@@ -138,6 +141,24 @@
     <value>Exit</value>
   </data>
   <data name="MainWindow_About" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="MainWindow_HomeTab" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="MainWindow_SettingsTab" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="MainWindow_ThemeDescription" xml:space="preserve">
+    <value>Select your preferred application appearance.</value>
+  </data>
+  <data name="MainWindow_RunOnStartupDescription" xml:space="preserve">
+    <value>Automatically start the application when you log in.</value>
+  </data>
+  <data name="MainWindow_DeveloperModeDescription" xml:space="preserve">
+    <value>Enable inspection tools and debug information for widgets.</value>
+  </data>
+  <data name="MainWindow_AboutTab" xml:space="preserve">
     <value>About</value>
   </data>
   <data name="AboutWindow_Title" xml:space="preserve">
@@ -166,6 +187,9 @@
   </data>
   <data name="AboutWindow_Discussions" xml:space="preserve">
     <value>Discussions</value>
+  </data>
+  <data name="AboutWindow_RedditCommunity" xml:space="preserve">
+    <value>Reddit Community</value>
   </data>
   <data name="AboutWindow_Open" xml:space="preserve">
     <value>Open</value>

@@ -9,7 +9,25 @@ It also supports running PowerShell commands when you need quick system actions.
  <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"/>
 </a>
 
-![HTWind Screenshot](assets/screenshot.png)
+## Screenshots
+
+<p align="center">
+ <img src="assets/app_screenshots/page_home.png" width="600" alt="Home - Widget Library"/>
+ <br/>
+ <i>Widget Library - Manage and toggle HTML widgets</i>
+</p>
+
+<p align="center">
+ <img src="assets/app_screenshots/page_settings.png" width="600" alt="Settings - App Customization"/>
+ <br/>
+ <i>Settings - Theme and startup configuration</i>
+</p>
+
+<p align="center">
+ <img src="assets/app_screenshots/page_about.png" width="600" alt="About - Version Information"/>
+ <br/>
+ <i>About - Version info and project links</i>
+</p>
 
 ## Highlights
 

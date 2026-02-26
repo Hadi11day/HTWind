@@ -9,6 +9,15 @@ namespace HTWind.Services;
 
 public sealed class HtmlEditorService : IHtmlEditorService
 {
+    private readonly IWebViewEnvironmentProvider _webViewEnvironmentProvider;
+
+    public HtmlEditorService(IWebViewEnvironmentProvider webViewEnvironmentProvider)
+    {
+        _webViewEnvironmentProvider =
+          webViewEnvironmentProvider
+          ?? throw new ArgumentNullException(nameof(webViewEnvironmentProvider));
+    }
+
     public async Task InitializeEditorAsync(
         WebView2 editorWebView,
         string filePath,
@@ -19,7 +28,7 @@ public sealed class HtmlEditorService : IHtmlEditorService
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(webMessageReceivedHandler);
 
-        var env = await CoreWebView2Environment.CreateAsync(userDataFolder: GetWebViewUserDataFolder());
+        var env = await _webViewEnvironmentProvider.GetEditorEnvironmentAsync();
         await editorWebView.EnsureCoreWebView2Async(env);
         editorWebView.CoreWebView2.WebMessageReceived += webMessageReceivedHandler;
 
@@ -325,16 +334,4 @@ public sealed class HtmlEditorService : IHtmlEditorService
                """;
     }
 
-    private static string GetWebViewUserDataFolder()
-    {
-        var path = Path.Combine(
-          Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-          "HTWind",
-          "WebView2",
-          "Editor"
-        );
-
-        Directory.CreateDirectory(path);
-        return path;
-    }
 }

@@ -13,7 +13,8 @@
     "@fluentui/react-components": "^9.73.0",
     "@fluentui/react-icons": "^2.0.319",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-zoom-pan-pinch": "^3.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.3",
@@ -30,4 +31,3 @@
     "vite": "^7.3.1"
   }
 }
-
