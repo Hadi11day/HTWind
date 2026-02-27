@@ -88,6 +88,12 @@
   <data name="MainWindow_WidgetsSection" xml:space="preserve">
     <value>Widgets</value>
   </data>
+  <data name="MainWindow_SearchWidgets" xml:space="preserve">
+    <value>Search widgets</value>
+  </data>
+  <data name="MainWindow_SearchWidgetsDescription" xml:space="preserve">
+    <value>Filter added widgets by name.</value>
+  </data>
   <data name="MainWindow_FileDialogFilter" xml:space="preserve">
     <value>HTML Files (*.html;*.htm)|*.html;*.htm|All Files (*.*)|*.*</value>
   </data>
@@ -157,6 +163,15 @@
   </data>
   <data name="MainWindow_DeveloperModeDescription" xml:space="preserve">
     <value>Enable inspection tools and debug information for widgets.</value>
+  </data>
+  <data name="MainWindow_ResetAllWidgets" xml:space="preserve">
+    <value>Reset all widgets</value>
+  </data>
+  <data name="MainWindow_ResetAllWidgetsDescription" xml:space="preserve">
+    <value>Reset positions for all widgets, then set all widgets to hidden and disable pin on top.</value>
+  </data>
+  <data name="MainWindow_ResetAllWidgetsButton" xml:space="preserve">
+    <value>Reset now</value>
   </data>
   <data name="MainWindow_AboutTab" xml:space="preserve">
     <value>About</value>

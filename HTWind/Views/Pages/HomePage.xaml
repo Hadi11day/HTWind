@@ -4,10 +4,15 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:loc="clr-namespace:HTWind.Localization">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="28,8,28,28">
+    <Grid Margin="28,8,28,28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
             <!-- Header -->
-            <Grid Margin="0,0,0,16">
+            <Grid Grid.Row="0" Margin="0,0,0,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -66,7 +71,7 @@
             </Grid>
 
             <!-- Widgets Section -->
-            <Grid Margin="0,0,0,8">
+            <Grid Grid.Row="1" Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -80,41 +85,110 @@
                     VerticalAlignment="Center" />
             </Grid>
 
-            <!-- Tip Card -->
-            <ui:Card Margin="0,0,0,8" Padding="14,10">
+            <!-- Search Card -->
+            <ui:Card Grid.Row="2" Margin="0,0,0,8" Padding="14,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+
                     <ui:SymbolIcon
-                        Symbol="Info24"
+                        Symbol="Search24"
                         FontSize="16"
                         VerticalAlignment="Center"
                         Margin="0,0,10,0"
                         Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                    <TextBlock
-                        Grid.Column="1"
-                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                        Text="{loc:Loc MainWindow_Tips}"
-                        TextWrapping="Wrap" />
 
-                    <ui:Button
-                        Grid.Column="2"
-                        Margin="12,0,0,0"
-                        VerticalAlignment="Center"
-                        Content="{loc:Loc MainWindow_FindMore}"
-                        Icon="{ui:SymbolIcon Open24}"
-                        ToolTip="{loc:Loc MainWindow_FindMore}"
-                        AutomationProperties.Name="{loc:Loc MainWindow_FindMore}"
-                        Click="FindMore_Click" />
+                    <Grid Grid.Column="1">
+                        <TextBox
+                            x:Name="WidgetSearchTextBox"
+                            MinHeight="32"
+                            ToolTip="{loc:Loc MainWindow_SearchWidgetsDescription}"
+                            AutomationProperties.Name="{loc:Loc MainWindow_SearchWidgets}"
+                            TextChanged="WidgetSearchTextBox_TextChanged" />
+
+                        <TextBlock
+                            Margin="10,0,0,0"
+                            VerticalAlignment="Center"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            Text="{loc:Loc MainWindow_SearchWidgets}"
+                            IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding Text, ElementName=WidgetSearchTextBox}" Value="" />
+                                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=WidgetSearchTextBox}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding Text, ElementName=WidgetSearchTextBox}" Value="{x:Null}" />
+                                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=WidgetSearchTextBox}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
                 </Grid>
             </ui:Card>
 
             <!-- Widget List -->
-            <ItemsControl Name="WidgetsList" ItemsSource="{Binding Widgets}">
-                <ItemsControl.ItemTemplate>
+            <ListBox
+                Name="WidgetsList"
+                Grid.Row="3"
+                ItemsSource="{Binding Widgets}"
+                BorderThickness="0"
+                Background="Transparent"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                ScrollViewer.CanContentScroll="True"
+                VirtualizingPanel.IsVirtualizing="True"
+                VirtualizingPanel.VirtualizationMode="Recycling"
+                VirtualizingPanel.ScrollUnit="Item">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Focusable" Value="False" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                        <ContentPresenter
+                                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
                     <DataTemplate>
                         <ui:Card Margin="0,0,0,6" Padding="16,10">
                             <Grid>
@@ -155,17 +229,17 @@
                                         <ContextMenu>
                                             <MenuItem
                                                 Header="{loc:Loc MainWindow_ResetPosition}"
-                                                Command="{Binding DataContext.ResetWidgetPositionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" />
+                                                Command="{Binding DataContext.ResetWidgetPositionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <MenuItem
                                                 Header="{loc:Loc MainWindow_Edit}"
-                                                Command="{Binding DataContext.EditWidgetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" />
+                                                Command="{Binding DataContext.EditWidgetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <Separator />
                                             <MenuItem
                                                 Header="{loc:Loc MainWindow_Remove}"
-                                                Command="{Binding DataContext.RemoveWidgetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" />
+                                                Command="{Binding DataContext.RemoveWidgetCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                         </ContextMenu>
                                     </ui:Button.ContextMenu>
                                 </ui:Button>
@@ -196,11 +270,11 @@
                             </Grid>
                         </ui:Card>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <!-- Empty State -->
-            <ui:Card HorizontalAlignment="Center" Padding="32,24" Margin="0,20,0,0">
+            <ui:Card Grid.Row="3" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="32,24" Margin="0,20,0,0" Panel.ZIndex="1">
                 <ui:Card.Style>
                     <Style TargetType="ui:Card">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -230,6 +304,5 @@
                         Text="{loc:Loc MainWindow_EmptyDescription}" />
                 </StackPanel>
             </ui:Card>
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>

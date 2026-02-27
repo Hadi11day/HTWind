@@ -882,6 +882,12 @@ function App() {
 
           </div>
 
+          <Body1 className={styles.featureDescription}>
+            Recommended installation method: download the installer file ({' '}
+            <strong>HTWind-setup-&lt;version&gt;.exe</strong>) from the latest GitHub release. Portable ZIP and
+            Microsoft Store are available as alternative options.
+          </Body1>
+
           <Body1 className={styles.communityNotice}>
             You can share your custom widgets with the community in{' '}
             <Link href={GITHUB_DISCUSSIONS_URL} target="_blank" rel="noreferrer">

@@ -14,6 +14,7 @@ public interface IWidgetManager
     void ApplyVisibility(WidgetModel model);
     void ApplyPinState(WidgetModel model);
     void ResetWidgetPosition(WidgetModel model);
+    void ResetAllWidgetsToDefaultState();
     void RemoveWidget(WidgetModel model);
     void CloseAll();
 }

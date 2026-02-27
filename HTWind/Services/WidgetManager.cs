@@ -209,6 +209,12 @@ public class WidgetManager : IWidgetManager
             return;
         }
 
+        if (!model.IsVisible)
+        {
+            model.IsVisible = true;
+            ApplyVisibility(model);
+        }
+
         if (_editorWindowsById.TryGetValue(model.Id, out var existingEditor))
         {
             existingEditor.Activate();
@@ -337,6 +343,40 @@ public class WidgetManager : IWidgetManager
             DefaultWidgetWidth,
             DefaultWidgetHeight
         );
+        ScheduleSave();
+    }
+
+    public void ResetAllWidgetsToDefaultState()
+    {
+        foreach (var model in Widgets.ToList())
+        {
+            model.IsPinned = false;
+            ApplyPinState(model);
+
+            if (_windowsById.TryGetValue(model.Id, out var window))
+            {
+                _geometryService.ResetToPrimaryDisplayCenter(
+                    window,
+                    model,
+                    DefaultWidgetWidth,
+                    DefaultWidgetHeight
+                );
+            }
+            else
+            {
+                model.Left = null;
+                model.Top = null;
+                model.WidgetWidth = null;
+                model.WidgetHeight = null;
+                model.MonitorDeviceName = null;
+                model.PreferredMonitorDeviceName = null;
+                model.MonitorPlacements = [];
+            }
+
+            model.IsVisible = false;
+            ApplyVisibility(model);
+        }
+
         ScheduleSave();
     }
 

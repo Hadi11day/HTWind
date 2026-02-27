@@ -51,13 +51,16 @@ Use GitHub Discussions and the HTWind Reddit community to share reusable widgets
 
 ## Installation
 
+Recommended for most users: install HTWind using the installer executable from GitHub Releases (`HTWind-setup-<version>.exe`).
+Portable ZIP and Microsoft Store installation are available as alternatives.
+
 ### Option 1: From GitHub Releases (recommended)
 
 1. Open `Releases` in this repository.
 2. Download one of the assets:
 
-- `HTWind-setup-<version>.exe` (installer)
-- `HTWind-portable-<version>.zip` (portable)
+- `HTWind-setup-<version>.exe` (installer, recommended)
+- `HTWind-portable-<version>.zip` (portable alternative)
 
 1. For installer mode, run the setup executable and follow the wizard.
 

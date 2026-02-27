@@ -31,6 +31,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         ChangeVisibilityCommand = new RelayCommand(model => ApplyVisibility(model as WidgetModel));
         ChangePinStateCommand = new RelayCommand(model => ApplyPinState(model as WidgetModel));
         ResetWidgetPositionCommand = new RelayCommand(model => ResetWidgetPosition(model as WidgetModel));
+        ResetAllWidgetsCommand = new RelayCommand(_ => ResetAllWidgets());
         EditWidgetCommand = new RelayCommand(model => OpenEditor(model as WidgetModel));
         RemoveWidgetCommand = new RelayCommand(model => RemoveWidget(model as WidgetModel));
     }
@@ -85,6 +86,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public ICommand ResetWidgetPositionCommand { get; }
 
+    public ICommand ResetAllWidgetsCommand { get; }
+
     public ICommand RemoveWidgetCommand { get; }
 
     public event EventHandler<ThemeOption>? ThemeRequested;
@@ -107,9 +110,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void AddWidget()
     {
-        if (_fileDialogService.TryPickHtmlFile(out var filePath))
+        if (_fileDialogService.TryPickHtmlFiles(out var filePaths))
         {
-            _widgetManager.AddWidget(filePath);
+            foreach (var filePath in filePaths)
+            {
+                _widgetManager.AddWidget(filePath);
+            }
         }
     }
 
@@ -161,6 +167,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         _widgetManager.RemoveWidget(model);
+    }
+
+    private void ResetAllWidgets()
+    {
+        _widgetManager.ResetAllWidgetsToDefaultState();
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

@@ -128,6 +128,44 @@
                         Unchecked="DeveloperModeToggle_Unchecked" />
                 </Grid>
             </ui:Card>
+
+            <!-- Widget Reset -->
+            <ui:Card Margin="0,0,0,8" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <ui:SymbolIcon
+                        Symbol="Warning24"
+                        FontSize="20"
+                        VerticalAlignment="Center"
+                        Margin="0,0,14,0" />
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{loc:Loc MainWindow_ResetAllWidgets}"
+                            FontSize="14"
+                            FontWeight="SemiBold" />
+                        <TextBlock
+                            Text="{loc:Loc MainWindow_ResetAllWidgetsDescription}"
+                            FontSize="12"
+                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <ui:Button
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Content="{loc:Loc MainWindow_ResetAllWidgetsButton}"
+                        Icon="{ui:SymbolIcon ArrowReset24}"
+                        ToolTip="{loc:Loc MainWindow_ResetAllWidgetsButton}"
+                        AutomationProperties.Name="{loc:Loc MainWindow_ResetAllWidgetsButton}"
+                        Command="{Binding ResetAllWidgetsCommand}" />
+                </Grid>
+            </ui:Card>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
