@@ -36,6 +36,9 @@ const GITHUB_REPOSITORY_URL = 'https://github.com/sametcn99/HTWind'
 const GITHUB_DISCUSSIONS_URL = 'https://github.com/sametcn99/HTWind/discussions'
 const REDDIT_COMMUNITY_URL = 'https://www.reddit.com/r/HTWind/'
 const RELEASES_URL = 'https://github.com/sametcn99/HTWind/releases'
+const WIDGET_PROMPT_URL = 'https://github.com/sametcn99/HTWind/blob/main/chat.prompt.md'
+const WIDGET_PROMPT_SHARED_URL =
+  'https://prompts.chat/prompts/cmm5broas0004li04ku12tp56_htwind-widget-creator'
 const LATEST_RELEASE_API_URL = 'https://api.github.com/repos/sametcn99/HTWind/releases/latest'
 const SUPPORT_URL = 'https://sametcc.me/support'
 const RELEASE_CACHE_KEY = 'htwind:latest-release'
@@ -962,6 +965,17 @@ function App() {
                 repository documentation
               </Link>
               .
+            </Body1>
+            <Body1 className={styles.featureDescription}>
+              Want to generate HTWind widgets with LLM assistance? Use the{' '}
+              <Link href={WIDGET_PROMPT_URL} target="_blank" rel="noreferrer">
+                HTWind Widget Generator Prompt
+              </Link>{' '}
+              or the{' '}
+              <Link href={WIDGET_PROMPT_SHARED_URL} target="_blank" rel="noreferrer">
+                shared prompts.chat version
+              </Link>{' '}
+              to produce HTWind-compatible single-file HTML widgets.
             </Body1>
           </Card>
         </section>

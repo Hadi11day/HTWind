@@ -90,6 +90,15 @@ If you are using the installed version of HTWind, you can uninstall it from **Wi
 
 You can build custom widgets using plain HTML/CSS/JavaScript.
 
+### Generate Widgets With LLM Help
+
+If you want AI assistance while creating widgets, use the dedicated HTWind system prompt:
+
+- [HTWind Widget Generator Prompt](chat.prompt.md)
+- [HTWind Widget Generator Prompt (shared)](https://prompts.chat/prompts/cmm5broas0004li04ku12tp56_htwind-widget-creator)
+
+You can copy this prompt into your preferred LLM and ask it to generate HTWind-compatible widgets (including PowerShell bridge usage) as a single HTML file.
+
 ### Host Bridge API
 
 Widgets can call:
