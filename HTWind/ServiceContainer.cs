@@ -10,11 +10,13 @@ public sealed class ServiceContainer
         FileDialogService = new FileDialogService();
         DeveloperModeService = new DeveloperModeService();
         WebViewEnvironmentProvider = new WebViewEnvironmentProvider();
+        WidgetPermissionStateService = new WidgetPermissionStateService();
         WidgetHostApiService = new WidgetHostApiService();
         WidgetWindowFactory = new WidgetWindowFactory(
             WidgetHostApiService,
             WebViewEnvironmentProvider,
-            DeveloperModeService
+            DeveloperModeService,
+            WidgetPermissionStateService
         );
         WidgetStateRepository = new WidgetStateRepository();
         WidgetGeometryService = new WidgetGeometryService();
@@ -23,7 +25,8 @@ public sealed class ServiceContainer
             WidgetWindowFactory,
             WidgetStateRepository,
             WidgetGeometryService,
-            HtmlEditorService
+            HtmlEditorService,
+            WidgetPermissionStateService
         );
         WidgetTemplateService = new WidgetTemplateService();
         StartupRegistrationService = new StartupRegistrationService();
@@ -34,6 +37,8 @@ public sealed class ServiceContainer
     public IFileDialogService FileDialogService { get; }
 
     public IWidgetHostApiService WidgetHostApiService { get; }
+
+    public IWidgetPermissionStateService WidgetPermissionStateService { get; }
 
     public IDeveloperModeService DeveloperModeService { get; }
 

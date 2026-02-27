@@ -57,6 +57,7 @@ public class WidgetManager : IWidgetManager
         new();
     private readonly DispatcherTimer _saveDebounceTimer;
     private readonly IWidgetStateRepository _stateRepository;
+    private readonly IWidgetPermissionStateService _widgetPermissionStateService;
     private readonly IWidgetWindowFactory _windowFactory;
     private readonly Dictionary<string, WidgetWindow> _windowsById = new();
     private bool _isRestoring;
@@ -65,7 +66,8 @@ public class WidgetManager : IWidgetManager
         IWidgetWindowFactory windowFactory,
         IWidgetStateRepository stateRepository,
         IWidgetGeometryService geometryService,
-        IHtmlEditorService htmlEditorService
+        IHtmlEditorService htmlEditorService,
+        IWidgetPermissionStateService widgetPermissionStateService
     )
     {
         _windowFactory =
@@ -76,6 +78,9 @@ public class WidgetManager : IWidgetManager
             geometryService ?? throw new ArgumentNullException(nameof(geometryService));
         _htmlEditorService =
             htmlEditorService ?? throw new ArgumentNullException(nameof(htmlEditorService));
+        _widgetPermissionStateService =
+            widgetPermissionStateService
+            ?? throw new ArgumentNullException(nameof(widgetPermissionStateService));
 
         _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         _saveDebounceTimer.Tick += (_, _) =>
@@ -348,6 +353,8 @@ public class WidgetManager : IWidgetManager
 
     public void ResetAllWidgetsToDefaultState()
     {
+        _widgetPermissionStateService.ClearAll();
+
         foreach (var model in Widgets.ToList())
         {
             model.IsPinned = false;

@@ -168,7 +168,7 @@
     <value>Reset all widgets</value>
   </data>
   <data name="MainWindow_ResetAllWidgetsDescription" xml:space="preserve">
-    <value>Reset positions for all widgets, then set all widgets to hidden and disable pin on top.</value>
+    <value>Reset positions for all widgets, set all widgets to hidden, disable pin on top, and clear saved permission decisions.</value>
   </data>
   <data name="MainWindow_ResetAllWidgetsButton" xml:space="preserve">
     <value>Reset now</value>
@@ -259,6 +259,30 @@
   </data>
   <data name="RiskConsentWindow_Accept" xml:space="preserve">
     <value>I Understand and Accept</value>
+  </data>
+  <data name="WidgetPermissionDialog_Title" xml:space="preserve">
+    <value>Widget Permission Request</value>
+  </data>
+  <data name="WidgetPermissionDialog_Header" xml:space="preserve">
+    <value>Permission required</value>
+  </data>
+  <data name="WidgetPermissionDialog_Description" xml:space="preserve">
+    <value>This decision will be remembered for this widget file. Allow only if you trust the widget source.</value>
+  </data>
+  <data name="WidgetPermissionDialog_PermissionLabel" xml:space="preserve">
+    <value>Requested permission</value>
+  </data>
+  <data name="WidgetPermissionDialog_WidgetLabel" xml:space="preserve">
+    <value>Widget file</value>
+  </data>
+  <data name="WidgetPermissionDialog_OriginLabel" xml:space="preserve">
+    <value>Origin</value>
+  </data>
+  <data name="WidgetPermissionDialog_Deny" xml:space="preserve">
+    <value>Deny</value>
+  </data>
+  <data name="WidgetPermissionDialog_Allow" xml:space="preserve">
+    <value>Allow</value>
   </data>
   <data name="MainWindow_AddWidgetOptions" xml:space="preserve">
     <value>Widget creation options</value>

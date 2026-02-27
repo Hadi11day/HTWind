@@ -34,7 +34,19 @@ public sealed class WebViewEnvironmentProvider : IWebViewEnvironmentProvider
         try
         {
             var userDataFolder = BuildUserDataFolder(profileName);
-            return await CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder);
+            // Pass conservative browser arguments to reduce background work and memory
+            var options = new CoreWebView2EnvironmentOptions(
+                additionalBrowserArguments: string.Join(' ', new[]
+                {
+                    // Disable extensions
+                    "--disable-extensions",
+                    "--disable-component-extensions-with-background-pages",
+                    // Enable low-end device optimizations
+                    "--enable-low-end-device-mode"
+                })
+            );
+
+            return await CoreWebView2Environment.CreateAsync(browserExecutableFolder: null, userDataFolder: userDataFolder, options: options);
         }
         catch
         {

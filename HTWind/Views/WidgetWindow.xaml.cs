@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -16,6 +17,7 @@ namespace HTWind;
 public partial class WidgetWindow : Window
 {
     private readonly IDeveloperModeService _developerModeService;
+    private readonly IWidgetPermissionStateService _widgetPermissionStateService;
     private const double MinWidgetWidth = 160;
     private const double MinWidgetHeight = 100;
     private readonly IWidgetHostApiService _widgetHostApiService;
@@ -34,6 +36,9 @@ public partial class WidgetWindow : Window
 
     private bool _isResizing;
     private string? _pendingLivePreviewHtml;
+    private bool _isLastNavigationLivePreview;
+    private int _lastLivePreviewHash;
+    private string? _lastNavigatedFilePath;
     private CornerResizeMode _resizeMode;
     private Point _resizeStartScreen;
     private Size _resizeStartSize;
@@ -45,7 +50,8 @@ public partial class WidgetWindow : Window
         WidgetModel model,
         IWidgetHostApiService widgetHostApiService,
         IWebViewEnvironmentProvider webViewEnvironmentProvider,
-        IDeveloperModeService developerModeService
+        IDeveloperModeService developerModeService,
+        IWidgetPermissionStateService widgetPermissionStateService
     )
     {
         InitializeComponent();
@@ -58,6 +64,9 @@ public partial class WidgetWindow : Window
         _developerModeService =
             developerModeService
             ?? throw new ArgumentNullException(nameof(developerModeService));
+        _widgetPermissionStateService =
+            widgetPermissionStateService
+            ?? throw new ArgumentNullException(nameof(widgetPermissionStateService));
         Model.PropertyChanged += Model_PropertyChanged;
         _developerModeService.Changed += DeveloperModeService_Changed;
 
@@ -182,6 +191,7 @@ public partial class WidgetWindow : Window
         var env = await _webViewEnvironmentProvider.GetWidgetsEnvironmentAsync();
         await webView.EnsureCoreWebView2Async(env);
         ApplyDeveloperModePolicy();
+        RegisterPermissionHandling();
         await RegisterHostBridgeAsync();
         _isWebViewReady = true;
 
@@ -249,6 +259,7 @@ public partial class WidgetWindow : Window
 
         webView.Stop();
         webView.CoreWebView2.Navigate("about:blank");
+        ResetNavigationTracking();
         _isSuspended = true;
         await Task.CompletedTask;
     }
@@ -287,14 +298,41 @@ public partial class WidgetWindow : Window
 
         if (!string.IsNullOrEmpty(_pendingLivePreviewHtml))
         {
+            var livePreviewHash = StringComparer.Ordinal.GetHashCode(_pendingLivePreviewHtml);
+            if (_isLastNavigationLivePreview && _lastLivePreviewHash == livePreviewHash)
+            {
+                return;
+            }
+
             webView.NavigateToString(_pendingLivePreviewHtml);
+            _isLastNavigationLivePreview = true;
+            _lastLivePreviewHash = livePreviewHash;
+            _lastNavigatedFilePath = null;
             return;
         }
 
         if (!string.IsNullOrEmpty(Model.FilePath))
         {
+            if (
+                !_isLastNavigationLivePreview
+                && string.Equals(_lastNavigatedFilePath, Model.FilePath, StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                return;
+            }
+
             webView.Source = new Uri(Model.FilePath);
+            _isLastNavigationLivePreview = false;
+            _lastNavigatedFilePath = Model.FilePath;
+            _lastLivePreviewHash = 0;
         }
+    }
+
+    private void ResetNavigationTracking()
+    {
+        _isLastNavigationLivePreview = false;
+        _lastLivePreviewHash = 0;
+        _lastNavigatedFilePath = null;
     }
 
     private void DragOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -506,6 +544,7 @@ public partial class WidgetWindow : Window
         if (webView.CoreWebView2 is not null)
         {
             webView.CoreWebView2.WebMessageReceived -= WebView_CoreWebView2_WebMessageReceived;
+            webView.CoreWebView2.PermissionRequested -= WebView_CoreWebView2_PermissionRequested;
         }
 
         webView.Dispose();
@@ -540,6 +579,9 @@ public partial class WidgetWindow : Window
 
         settings.AreDefaultContextMenusEnabled = isDeveloperModeEnabled;
         settings.AreDevToolsEnabled = false;
+        settings.AreBrowserAcceleratorKeysEnabled = false;
+        settings.IsStatusBarEnabled = false;
+        settings.IsZoomControlEnabled = false;
     }
 
     private async Task RegisterHostBridgeAsync()
@@ -552,6 +594,113 @@ public partial class WidgetWindow : Window
         webView.CoreWebView2.WebMessageReceived -= WebView_CoreWebView2_WebMessageReceived;
         webView.CoreWebView2.WebMessageReceived += WebView_CoreWebView2_WebMessageReceived;
         await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(GetHostBridgeScript());
+    }
+
+    private void RegisterPermissionHandling()
+    {
+        if (webView.CoreWebView2 is null)
+        {
+            return;
+        }
+
+        webView.CoreWebView2.PermissionRequested -= WebView_CoreWebView2_PermissionRequested;
+        webView.CoreWebView2.PermissionRequested += WebView_CoreWebView2_PermissionRequested;
+    }
+
+    private void WebView_CoreWebView2_PermissionRequested(
+        object? sender,
+        CoreWebView2PermissionRequestedEventArgs e
+    )
+    {
+        if (string.IsNullOrWhiteSpace(Model.FilePath))
+        {
+            return;
+        }
+
+        if (
+            _widgetPermissionStateService.TryGetDecision(
+                Model.FilePath,
+                e.PermissionKind,
+                out var savedState
+            )
+        )
+        {
+            e.State = savedState;
+            e.SavesInProfile = true;
+            e.Handled = true;
+            return;
+        }
+
+        var userDecision = ShowPermissionDecisionDialog(e.PermissionKind, e.Uri);
+        if (userDecision is null)
+        {
+            return;
+        }
+
+        e.State = userDecision.Value;
+        e.SavesInProfile = true;
+        e.Handled = true;
+        _widgetPermissionStateService.SaveDecision(Model.FilePath, e.PermissionKind, userDecision.Value);
+        _ = RestartWidgetContentAfterPermissionDecisionAsync();
+    }
+
+    private async Task RestartWidgetContentAfterPermissionDecisionAsync()
+    {
+        if (!_isWebViewReady || webView.CoreWebView2 is null || !Model.IsVisible)
+        {
+            return;
+        }
+
+        try
+        {
+            webView.Stop();
+            webView.CoreWebView2.Navigate("about:blank");
+            ResetNavigationTracking();
+
+            // Allow permission request pipeline to complete before reloading content.
+            await Task.Delay(75);
+
+            if (!_isWebViewReady || webView.CoreWebView2 is null || !Model.IsVisible)
+            {
+                return;
+            }
+
+            NavigateCurrentContent();
+        }
+        catch
+        {
+            // Restart failures should not break runtime interaction.
+        }
+    }
+
+    private CoreWebView2PermissionState? ShowPermissionDecisionDialog(
+        CoreWebView2PermissionKind permissionKind,
+        string requestUri
+    )
+    {
+        _ = requestUri;
+
+        var widgetName = Path.GetFileName(Model.FilePath);
+        if (string.IsNullOrWhiteSpace(widgetName))
+        {
+            widgetName = string.IsNullOrWhiteSpace(Model.FilePath)
+                ? "Unknown widget"
+                : Model.FilePath!;
+        }
+
+        var permissionWindow = new WidgetPermissionDecisionWindow(
+            permissionKind.ToString(),
+            widgetName
+        )
+        {
+            Owner = this
+        };
+
+        permissionWindow.ShowDialog();
+
+        return permissionWindow.IsAllowed
+            ? CoreWebView2PermissionState.Allow
+            : CoreWebView2PermissionState.Deny;
     }
 
     private async void WebView_CoreWebView2_WebMessageReceived(
