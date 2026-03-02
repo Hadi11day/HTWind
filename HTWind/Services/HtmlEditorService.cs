@@ -87,6 +87,11 @@ public sealed class HtmlEditorService : IHtmlEditorService
         }
     }
 
+    public void ReleaseEditorEnvironment()
+    {
+        _webViewEnvironmentProvider.ReleaseEditorEnvironment();
+    }
+
     private static async Task WaitEditorReadyAsync(WebView2 editorWebView)
     {
         for (var i = 0; i < 80; i++)

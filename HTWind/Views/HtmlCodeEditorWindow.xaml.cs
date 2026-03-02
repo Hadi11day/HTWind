@@ -30,6 +30,7 @@ public partial class HtmlCodeEditorWindow : FluentWindow
     private readonly IHtmlEditorService _htmlEditorService;
     private readonly bool _isInitialHotReloadEnabled;
     private readonly WidgetModel _model;
+    private bool _hasEditorEnvironmentLease;
     private bool _isHotReloadEnabled;
 
     public HtmlCodeEditorWindow(
@@ -72,11 +73,26 @@ public partial class HtmlCodeEditorWindow : FluentWindow
             return;
         }
 
-        await _htmlEditorService.InitializeEditorAsync(
-            EditorWebView,
-            filePath,
-            CoreWebView2_WebMessageReceived
-        );
+        try
+        {
+            _hasEditorEnvironmentLease = true;
+            await _htmlEditorService.InitializeEditorAsync(
+                EditorWebView,
+                filePath,
+                CoreWebView2_WebMessageReceived
+            );
+        }
+        catch
+        {
+            MessageBox.Show(
+                LocalizationService.Get("EditorWindow_LoadError"),
+                LocalizationService.Get("EditorWindow_Title"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+            Close();
+            return;
+        }
 
         await ApplyEditorThemeAsync();
 
@@ -178,6 +194,14 @@ public partial class HtmlCodeEditorWindow : FluentWindow
         if (EditorWebView.CoreWebView2 is not null)
         {
             EditorWebView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
+        }
+
+        EditorWebView.Dispose();
+
+        if (_hasEditorEnvironmentLease)
+        {
+            _htmlEditorService.ReleaseEditorEnvironment();
+            _hasEditorEnvironmentLease = false;
         }
 
         LivePreviewChanged?.Invoke(this, new LivePreviewChangedEventArgs(null));

@@ -33,6 +33,7 @@ public partial class WidgetWindow : Window
     private bool _isDesktopInteractionModifierActive;
     private bool _isSuspended;
     private bool _isWebViewReady;
+    private bool _hasWidgetsEnvironmentLease;
 
     private bool _isResizing;
     private string? _pendingLivePreviewHtml;
@@ -189,20 +190,35 @@ public partial class WidgetWindow : Window
         }
 
         var env = await _webViewEnvironmentProvider.GetWidgetsEnvironmentAsync();
-        await webView.EnsureCoreWebView2Async(env);
-        ApplyDeveloperModePolicy();
-        RegisterPermissionHandling();
-        await RegisterHostBridgeAsync();
-        _isWebViewReady = true;
+        _hasWidgetsEnvironmentLease = true;
 
-        if (Model.IsVisible)
+        try
         {
-            NavigateCurrentContent();
+            await webView.EnsureCoreWebView2Async(env);
+            ApplyDeveloperModePolicy();
+            RegisterPermissionHandling();
+            await RegisterHostBridgeAsync();
+            _isWebViewReady = true;
+
+            if (Model.IsVisible)
+            {
+                NavigateCurrentContent();
+            }
+            else
+            {
+                webView.CoreWebView2.Navigate("about:blank");
+                _isSuspended = true;
+            }
         }
-        else
+        catch
         {
-            webView.CoreWebView2.Navigate("about:blank");
-            _isSuspended = true;
+            if (_hasWidgetsEnvironmentLease)
+            {
+                _webViewEnvironmentProvider.ReleaseWidgetsEnvironment();
+                _hasWidgetsEnvironmentLease = false;
+            }
+
+            throw;
         }
     }
 
@@ -554,6 +570,13 @@ public partial class WidgetWindow : Window
         }
 
         webView.Dispose();
+
+        if (_hasWidgetsEnvironmentLease)
+        {
+            _webViewEnvironmentProvider.ReleaseWidgetsEnvironment();
+            _hasWidgetsEnvironmentLease = false;
+        }
+
         base.OnClosed(e);
     }
 

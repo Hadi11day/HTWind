@@ -16,4 +16,6 @@ public interface IHtmlEditorService
     Task SaveEditorContentAsync(WebView2 editorWebView, string filePath);
 
     bool TryReadContentChangedPayload(string webMessageAsJson, out string htmlContent);
+
+    void ReleaseEditorEnvironment();
 }

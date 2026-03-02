@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.IO;
 
 using Microsoft.Web.WebView2.Core;
@@ -7,8 +6,9 @@ namespace HTWind.Services;
 
 public sealed class WebViewEnvironmentProvider : IWebViewEnvironmentProvider
 {
-    private readonly ConcurrentDictionary<string, Task<CoreWebView2Environment>> _environments =
+    private readonly Dictionary<string, EnvironmentEntry> _environments =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _syncRoot = new();
 
     public Task<CoreWebView2Environment> GetWidgetsEnvironmentAsync()
     {
@@ -20,11 +20,54 @@ public sealed class WebViewEnvironmentProvider : IWebViewEnvironmentProvider
         return GetEnvironmentAsync("Editor");
     }
 
+    public void ReleaseWidgetsEnvironment()
+    {
+        ReleaseEnvironment("Widgets");
+    }
+
+    public void ReleaseEditorEnvironment()
+    {
+        ReleaseEnvironment("Editor");
+    }
+
     private Task<CoreWebView2Environment> GetEnvironmentAsync(string profileName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profileName);
 
-        return _environments.GetOrAdd(profileName, CreateEnvironmentWithRetryOnFailureAsync);
+        lock (_syncRoot)
+        {
+            if (!_environments.TryGetValue(profileName, out var entry))
+            {
+                entry = new EnvironmentEntry(CreateEnvironmentWithRetryOnFailureAsync(profileName));
+                _environments[profileName] = entry;
+            }
+
+            entry.ReferenceCount++;
+            return entry.EnvironmentTask;
+        }
+    }
+
+    private void ReleaseEnvironment(string profileName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profileName);
+
+        lock (_syncRoot)
+        {
+            if (!_environments.TryGetValue(profileName, out var entry))
+            {
+                return;
+            }
+
+            if (entry.ReferenceCount > 0)
+            {
+                entry.ReferenceCount--;
+            }
+
+            if (entry.ReferenceCount == 0)
+            {
+                _environments.Remove(profileName);
+            }
+        }
     }
 
     private async Task<CoreWebView2Environment> CreateEnvironmentWithRetryOnFailureAsync(
@@ -50,9 +93,20 @@ public sealed class WebViewEnvironmentProvider : IWebViewEnvironmentProvider
         }
         catch
         {
-            _environments.TryRemove(profileName, out _);
+            lock (_syncRoot)
+            {
+                _environments.Remove(profileName);
+            }
+
             throw;
         }
+    }
+
+    private sealed class EnvironmentEntry(Task<CoreWebView2Environment> environmentTask)
+    {
+        public Task<CoreWebView2Environment> EnvironmentTask { get; } = environmentTask;
+
+        public int ReferenceCount { get; set; }
     }
 
     private static string BuildUserDataFolder(string profileName)
