@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -20,14 +21,18 @@ public partial class WidgetWindow : Window
     private readonly IWidgetPermissionStateService _widgetPermissionStateService;
     private const double MinWidgetWidth = 160;
     private const double MinWidgetHeight = 100;
+    private const int SharedInteractionStateIntervalMilliseconds = 180;
     private readonly IWidgetHostApiService _widgetHostApiService;
     private readonly IWebViewEnvironmentProvider _webViewEnvironmentProvider;
-    private readonly DispatcherTimer _interactionStateTimer;
+    private static readonly HashSet<WidgetWindow> SharedInteractionStateWindows = [];
+    private static DispatcherTimer? SharedInteractionStateTimer;
     private static readonly JsonSerializerOptions HostBridgeJsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = true
     };
+    private static readonly HostBridgeJsonContext HostBridgeJsonContextInstance =
+        HostBridgeJsonContext.Default;
     private bool _isDragging;
     private Task? _initializationTask;
     private bool _isDesktopInteractionModifierActive;
@@ -71,12 +76,8 @@ public partial class WidgetWindow : Window
         Model.PropertyChanged += Model_PropertyChanged;
         _developerModeService.Changed += DeveloperModeService_Changed;
 
-        _interactionStateTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(120)
-        };
-        _interactionStateTimer.Tick += InteractionStateTimer_Tick;
         Loaded += WidgetWindow_Loaded;
+        StateChanged += WidgetWindow_StateChanged;
 
         UpdateOverlay();
         SetRuntimeVisibility(Model.IsVisible);
@@ -99,11 +100,38 @@ public partial class WidgetWindow : Window
 
     private void WidgetWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        _interactionStateTimer.Start();
+        RegisterForSharedInteractionStateUpdates();
     }
 
-    private void InteractionStateTimer_Tick(object? sender, EventArgs e)
+    private static void SharedInteractionStateTimer_Tick(object? sender, EventArgs e)
     {
+        _ = sender;
+        _ = e;
+
+        foreach (var window in SharedInteractionStateWindows)
+        {
+            window.OnSharedInteractionStateTick();
+        }
+    }
+
+    private void OnSharedInteractionStateTick()
+    {
+        if (!IsLoaded || !IsVisible)
+        {
+            return;
+        }
+
+        if (!Model.IsLocked)
+        {
+            if (_isDesktopInteractionModifierActive)
+            {
+                _isDesktopInteractionModifierActive = false;
+                UpdateOverlay();
+            }
+
+            return;
+        }
+
         // Keep the interaction mode stable while pointer gesture is active.
         if (_isDragging || _isResizing)
         {
@@ -111,6 +139,54 @@ public partial class WidgetWindow : Window
         }
 
         RefreshDesktopInteractionState();
+    }
+
+    private void RegisterForSharedInteractionStateUpdates()
+    {
+        if (SharedInteractionStateTimer is null)
+        {
+            SharedInteractionStateTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(SharedInteractionStateIntervalMilliseconds)
+            };
+            SharedInteractionStateTimer.Tick += SharedInteractionStateTimer_Tick;
+        }
+
+        SharedInteractionStateWindows.Add(this);
+        if (!SharedInteractionStateTimer.IsEnabled)
+        {
+            SharedInteractionStateTimer.Start();
+        }
+    }
+
+    private void UnregisterFromSharedInteractionStateUpdates()
+    {
+        SharedInteractionStateWindows.Remove(this);
+        if (SharedInteractionStateTimer is null || SharedInteractionStateWindows.Count > 0)
+        {
+            return;
+        }
+
+        SharedInteractionStateTimer.Stop();
+        SharedInteractionStateTimer.Tick -= SharedInteractionStateTimer_Tick;
+        SharedInteractionStateTimer = null;
+    }
+
+    private void WidgetWindow_StateChanged(object? sender, EventArgs e)
+    {
+        _ = sender;
+        _ = e;
+
+        if (WindowState == WindowState.Minimized)
+        {
+            _ = SuspendExecutionAsync();
+            return;
+        }
+
+        if (Model.IsVisible)
+        {
+            _ = ResumeExecutionAsync();
+        }
     }
 
     private void RefreshDesktopInteractionState()
@@ -200,14 +276,13 @@ public partial class WidgetWindow : Window
             await RegisterHostBridgeAsync();
             _isWebViewReady = true;
 
-            if (Model.IsVisible)
+            if (Model.IsVisible && WindowState != WindowState.Minimized)
             {
                 NavigateCurrentContent();
             }
             else
             {
-                webView.CoreWebView2.Navigate("about:blank");
-                _isSuspended = true;
+                await SuspendExecutionAsync();
             }
         }
         catch
@@ -280,10 +355,23 @@ public partial class WidgetWindow : Window
         }
 
         webView.Stop();
-        webView.CoreWebView2.Navigate("about:blank");
-        ResetNavigationTracking();
+        var didSuspend = false;
+        try
+        {
+            didSuspend = await webView.CoreWebView2.TrySuspendAsync();
+        }
+        catch
+        {
+            // Fall back to blank navigation when suspension fails.
+        }
+
+        if (!didSuspend)
+        {
+            webView.CoreWebView2.Navigate("about:blank");
+            ResetNavigationTracking();
+        }
+
         _isSuspended = true;
-        await Task.CompletedTask;
     }
 
     private async Task ResumeExecutionAsync()
@@ -296,7 +384,7 @@ public partial class WidgetWindow : Window
 
         if (!_isSuspended)
         {
-            if (Model.IsVisible)
+            if (Model.IsVisible && WindowState != WindowState.Minimized)
             {
                 NavigateCurrentContent();
             }
@@ -304,11 +392,24 @@ public partial class WidgetWindow : Window
             return;
         }
 
-        if (Model.IsVisible)
+        if (webView.CoreWebView2 is not null)
+        {
+            try
+            {
+                webView.CoreWebView2.Resume();
+            }
+            catch
+            {
+                // Resume can fail when runtime process is recycling.
+            }
+        }
+
+        if (Model.IsVisible && WindowState != WindowState.Minimized)
         {
             NavigateCurrentContent();
-            _isSuspended = false;
         }
+
+        _isSuspended = false;
     }
 
     private void NavigateCurrentContent()
@@ -558,9 +659,9 @@ public partial class WidgetWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        _interactionStateTimer.Stop();
-        _interactionStateTimer.Tick -= InteractionStateTimer_Tick;
+        UnregisterFromSharedInteractionStateUpdates();
         Loaded -= WidgetWindow_Loaded;
+        StateChanged -= WidgetWindow_StateChanged;
         Model.PropertyChanged -= Model_PropertyChanged;
         _developerModeService.Changed -= DeveloperModeService_Changed;
         if (webView.CoreWebView2 is not null)
@@ -745,9 +846,9 @@ public partial class WidgetWindow : Window
         WidgetHostApiRequest? request;
         try
         {
-            request = JsonSerializer.Deserialize<WidgetHostApiRequest>(
+            request = JsonSerializer.Deserialize(
                 e.WebMessageAsJson,
-                HostBridgeJsonOptions
+                HostBridgeJsonContextInstance.WidgetHostApiRequest
             );
         }
         catch
@@ -775,6 +876,8 @@ public partial class WidgetWindow : Window
             Error = executionResult.Error
         };
 
+        // Keep source-generated deserialization for request payloads, but use runtime options for
+        // response serialization because Result can carry polymorphic/anonymous objects.
         var json = JsonSerializer.Serialize(response, HostBridgeJsonOptions);
         var payloadBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
@@ -929,6 +1032,14 @@ public partial class WidgetWindow : Window
 
         public string? Error { get; set; }
     }
+
+    [JsonSourceGenerationOptions(
+        PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    )]
+    [JsonSerializable(typeof(WidgetHostApiRequest))]
+    [JsonSerializable(typeof(WidgetHostApiResponse))]
+    private sealed partial class HostBridgeJsonContext : JsonSerializerContext;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint

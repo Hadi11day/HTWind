@@ -10,10 +10,13 @@ using Microsoft.Win32;
 
 namespace HTWind.Services;
 
-public class WidgetManager : IWidgetManager
+public class WidgetManager : IWidgetManager, IDisposable
 {
     private const double DefaultWidgetWidth = 300;
     private const double DefaultWidgetHeight = 300;
+    private const int VisibleWindowQueueFastDelayMilliseconds = 20;
+    private const int VisibleWindowQueueSteadyDelayMilliseconds = 40;
+    private const int GeometryCaptureDebounceMilliseconds = 180;
     private const string DefaultNewWidgetTemplate =
         "<!doctype html>\n"
         + "<html lang=\"en\">\n"
@@ -56,14 +59,18 @@ public class WidgetManager : IWidgetManager
     private readonly Dictionary<string, PropertyChangedEventHandler> _modelPropertyChangedHandlers =
         new();
     private readonly DispatcherTimer _saveDebounceTimer;
+    private readonly EventHandler _saveDebounceTickHandler;
     private readonly IWidgetStateRepository _stateRepository;
     private readonly IWidgetPermissionStateService _widgetPermissionStateService;
     private readonly IWidgetWindowFactory _windowFactory;
     private readonly Dictionary<string, WidgetWindow> _windowsById = new();
+    private readonly Dictionary<string, DispatcherTimer> _geometryCaptureTimersByWidgetId =
+        new(StringComparer.Ordinal);
     private readonly Queue<(WidgetModel Model, bool HasPersistedGeometry)> _visibleWindowCreateQueue = new();
     private readonly HashSet<string> _queuedVisibleWindowIds = new(StringComparer.Ordinal);
     private bool _isRestoring;
     private bool _isProcessingVisibleWindowQueue;
+    private bool _isDisposed;
 
     public WidgetManager(
         IWidgetWindowFactory windowFactory,
@@ -86,13 +93,40 @@ public class WidgetManager : IWidgetManager
             ?? throw new ArgumentNullException(nameof(widgetPermissionStateService));
 
         _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
-        _saveDebounceTimer.Tick += (_, _) =>
-        {
-            _saveDebounceTimer.Stop();
-            SaveStateToDisk();
-        };
+        _saveDebounceTickHandler = SaveDebounceTimer_Tick;
+        _saveDebounceTimer.Tick += _saveDebounceTickHandler;
 
         SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
+    }
+
+    private void SaveDebounceTimer_Tick(object? sender, EventArgs e)
+    {
+        _ = sender;
+        _ = e;
+
+        _saveDebounceTimer.Stop();
+        SaveStateToDisk();
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_isDisposed || !disposing)
+        {
+            return;
+        }
+
+        CloseAll();
+
+        _saveDebounceTimer.Stop();
+        _saveDebounceTimer.Tick -= _saveDebounceTickHandler;
+
+        _isDisposed = true;
     }
 
     public ObservableCollection<WidgetModel> Widgets { get; } = new();
@@ -418,6 +452,7 @@ public class WidgetManager : IWidgetManager
         }
 
         _queuedVisibleWindowIds.Remove(model.Id);
+        RemoveGeometryCaptureTimer(model.Id);
 
         UnregisterModelChangeHandler(model);
         _stateRepository.DeleteManagedWidgetFile(model.FilePath);
@@ -428,7 +463,13 @@ public class WidgetManager : IWidgetManager
 
     public void CloseAll()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
+        _saveDebounceTimer.Stop();
 
         foreach (var editor in _editorWindowsById.Values.ToList())
         {
@@ -441,6 +482,13 @@ public class WidgetManager : IWidgetManager
         {
             window.Close();
         }
+
+        foreach (var timer in _geometryCaptureTimersByWidgetId.Values)
+        {
+            timer.Stop();
+        }
+
+        _geometryCaptureTimersByWidgetId.Clear();
 
         _windowsById.Clear();
         _visibleWindowCreateQueue.Clear();
@@ -482,20 +530,22 @@ public class WidgetManager : IWidgetManager
 
         window.LocationChanged += (_, _) =>
         {
-            _geometryService.CaptureGeometry(window, model);
-            ScheduleSave();
+            ScheduleGeometryCapture(window, model);
         };
         window.SizeChanged += (_, _) =>
         {
-            _geometryService.CaptureGeometry(window, model);
-            ScheduleSave();
+            ScheduleGeometryCapture(window, model);
         };
         RegisterModelChangeHandler(model);
 
         window.Closed += (_, _) =>
         {
+            _geometryService.CaptureGeometry(window, model);
+            ScheduleSave();
+
             _windowsById.Remove(model.Id);
             _queuedVisibleWindowIds.Remove(model.Id);
+            RemoveGeometryCaptureTimer(model.Id);
             UnregisterModelChangeHandler(model);
         };
 
@@ -543,6 +593,8 @@ public class WidgetManager : IWidgetManager
 
     private async Task ProcessVisibleWindowQueueAsync()
     {
+        var processedWindows = 0;
+
         try
         {
             while (_visibleWindowCreateQueue.Count > 0)
@@ -578,7 +630,17 @@ public class WidgetManager : IWidgetManager
                     // Keep queue processing resilient if a widget fails to initialize.
                 }
 
-                await Task.Delay(80);
+                processedWindows++;
+
+                if (_visibleWindowCreateQueue.Count == 0)
+                {
+                    continue;
+                }
+
+                var delayMilliseconds = processedWindows <= 2
+                    ? VisibleWindowQueueFastDelayMilliseconds
+                    : VisibleWindowQueueSteadyDelayMilliseconds;
+                await Task.Delay(delayMilliseconds);
             }
         }
         finally
@@ -674,6 +736,38 @@ public class WidgetManager : IWidgetManager
         _saveDebounceTimer.Start();
     }
 
+    private void ScheduleGeometryCapture(WidgetWindow window, WidgetModel model)
+    {
+        if (!_geometryCaptureTimersByWidgetId.TryGetValue(model.Id, out var timer))
+        {
+            timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(GeometryCaptureDebounceMilliseconds)
+            };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                _geometryService.CaptureGeometry(window, model);
+                ScheduleSave();
+            };
+            _geometryCaptureTimersByWidgetId[model.Id] = timer;
+        }
+
+        timer.Stop();
+        timer.Start();
+    }
+
+    private void RemoveGeometryCaptureTimer(string widgetId)
+    {
+        if (!_geometryCaptureTimersByWidgetId.TryGetValue(widgetId, out var timer))
+        {
+            return;
+        }
+
+        timer.Stop();
+        _geometryCaptureTimersByWidgetId.Remove(widgetId);
+    }
+
     private void SaveStateToDisk()
     {
         _stateRepository.Save(
@@ -709,6 +803,8 @@ public class WidgetManager : IWidgetManager
 
     private void SystemEvents_DisplaySettingsChanged(object? sender, EventArgs e)
     {
+        WidgetGeometryService.InvalidateMonitorCache();
+
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher is null)
         {

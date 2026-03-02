@@ -1,10 +1,14 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace HTWind.Services;
 
-public sealed class WidgetStateRepository : IWidgetStateRepository
+public sealed partial class WidgetStateRepository : IWidgetStateRepository
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly WidgetStateJsonContext JsonContext = new(JsonOptions);
+
     private readonly string _stateFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "HTWind",
@@ -32,7 +36,7 @@ public sealed class WidgetStateRepository : IWidgetStateRepository
         try
         {
             var json = File.ReadAllText(_stateFilePath);
-            var states = JsonSerializer.Deserialize<List<WidgetStateRecord>>(json);
+            var states = JsonSerializer.Deserialize(json, JsonContext.ListWidgetStateRecord);
             return states ?? [];
         }
         catch
@@ -48,7 +52,8 @@ public sealed class WidgetStateRepository : IWidgetStateRepository
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_stateFilePath)!);
-            var json = JsonSerializer.Serialize(states, new JsonSerializerOptions { WriteIndented = true });
+            var stateList = states as List<WidgetStateRecord> ?? states.ToList();
+            var json = JsonSerializer.Serialize(stateList, JsonContext.ListWidgetStateRecord);
             File.WriteAllText(_stateFilePath, json);
         }
         catch
@@ -176,4 +181,8 @@ public sealed class WidgetStateRepository : IWidgetStateRepository
         // Fallback keeps uniqueness even under extreme collisions.
         return Path.Combine(_widgetsDataDirectory, $"{sanitizedName}-{Guid.NewGuid():N}{extension}");
     }
+
+    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSerializable(typeof(List<WidgetStateRecord>))]
+    private sealed partial class WidgetStateJsonContext : JsonSerializerContext;
 }

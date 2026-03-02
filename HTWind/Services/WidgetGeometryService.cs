@@ -6,6 +6,11 @@ namespace HTWind.Services;
 public sealed class WidgetGeometryService : IWidgetGeometryService
 {
     private const int MonitorDefaultToNearest = 2;
+    private static readonly TimeSpan MonitorCacheDuration = TimeSpan.FromMilliseconds(750);
+    private static readonly object MonitorCacheSync = new();
+    private static DateTimeOffset MonitorCacheExpiresAtUtc = DateTimeOffset.MinValue;
+    private static Dictionary<string, Rect> MonitorCache =
+        new(StringComparer.OrdinalIgnoreCase);
 
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromPoint(NativePoint pt, int dwFlags);
@@ -312,8 +317,25 @@ public sealed class WidgetGeometryService : IWidgetGeometryService
         return GetConnectedMonitors().ContainsKey(monitorDeviceName);
     }
 
+    internal static void InvalidateMonitorCache()
+    {
+        lock (MonitorCacheSync)
+        {
+            MonitorCacheExpiresAtUtc = DateTimeOffset.MinValue;
+            MonitorCache.Clear();
+        }
+    }
+
     private static Dictionary<string, Rect> GetConnectedMonitors()
     {
+        lock (MonitorCacheSync)
+        {
+            if (DateTimeOffset.UtcNow <= MonitorCacheExpiresAtUtc && MonitorCache.Count > 0)
+            {
+                return new Dictionary<string, Rect>(MonitorCache, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
         var monitors = new Dictionary<string, Rect>(StringComparer.OrdinalIgnoreCase);
 
         EnumDisplayMonitors(
@@ -338,6 +360,12 @@ public sealed class WidgetGeometryService : IWidgetGeometryService
             },
             IntPtr.Zero
         );
+
+        lock (MonitorCacheSync)
+        {
+            MonitorCache = new Dictionary<string, Rect>(monitors, StringComparer.OrdinalIgnoreCase);
+            MonitorCacheExpiresAtUtc = DateTimeOffset.UtcNow.Add(MonitorCacheDuration);
+        }
 
         return monitors;
     }

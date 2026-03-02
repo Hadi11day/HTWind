@@ -1,4 +1,6 @@
 using System.IO;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace HTWind.Services;
 
@@ -9,6 +11,7 @@ public sealed class ApplicationBootstrapper : IApplicationBootstrapper
     private readonly IThemeService _themeService;
     private readonly IWidgetManager _widgetManager;
     private readonly IWidgetTemplateService _widgetTemplateService;
+    private bool _isBackgroundInitializationStarted;
 
     public ApplicationBootstrapper(
         IWidgetManager widgetManager,
@@ -31,11 +34,46 @@ public sealed class ApplicationBootstrapper : IApplicationBootstrapper
         _themeService.ApplyTheme(ThemeOption.Device);
 
         _mainWindow.Show();
-        EnsureTemplateFilesMaterialized();
-        _widgetManager.LoadPersistedWidgets();
+        StartBackgroundInitialization();
+    }
 
-        SyncBuiltInWidgetFiles(_widgetManager, _widgetTemplateService);
-        EnsureDefaultWidgets();
+    private void StartBackgroundInitialization()
+    {
+        if (_isBackgroundInitializationStarted)
+        {
+            return;
+        }
+
+        _isBackgroundInitializationStarted = true;
+        _ = InitializeWidgetRuntimeAsync();
+    }
+
+    private async Task InitializeWidgetRuntimeAsync()
+    {
+        try
+        {
+            await Task.Run(EnsureTemplateFilesMaterialized);
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null)
+            {
+                return;
+            }
+
+            await dispatcher.InvokeAsync(
+                () =>
+                {
+                    _widgetManager.LoadPersistedWidgets();
+                    SyncBuiltInWidgetFiles(_widgetManager, _widgetTemplateService);
+                    EnsureDefaultWidgets();
+                },
+                DispatcherPriority.Background
+            );
+        }
+        catch
+        {
+            // Keep startup resilient even if a background initialization step fails.
+        }
     }
 
     private void EnsureTemplateFilesMaterialized()

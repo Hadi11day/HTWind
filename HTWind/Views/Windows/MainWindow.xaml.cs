@@ -20,6 +20,7 @@ public partial class MainWindow : FluentWindow
     private readonly MainWindowViewModel _viewModel;
     private readonly IWidgetManager _widgetManager;
     private readonly Dictionary<string, UserControl> _pageCache = new();
+    private string _activePageTag = "Home";
 
     private bool _isExiting;
     private bool _isNavigationReady;
@@ -125,6 +126,8 @@ public partial class MainWindow : FluentWindow
 
     private void NavigateTo(string tag)
     {
+        TrimPageCacheIfMemoryPressure(tag);
+
         if (!_pageCache.TryGetValue(tag, out var page))
         {
             page = tag switch
@@ -143,7 +146,47 @@ public partial class MainWindow : FluentWindow
             _pageCache[tag] = page;
         }
 
+        _activePageTag = tag;
+
         NavigationView.ReplaceContent(page, null);
+    }
+
+    private void TrimPageCacheIfMemoryPressure(string incomingTag)
+    {
+        if (_pageCache.Count <= 1)
+        {
+            return;
+        }
+
+        var gcInfo = GC.GetGCMemoryInfo();
+        var highMemoryLoadThresholdBytes = gcInfo.HighMemoryLoadThresholdBytes;
+        var currentMemoryLoadBytes = gcInfo.MemoryLoadBytes;
+        if (highMemoryLoadThresholdBytes <= 0)
+        {
+            return;
+        }
+
+        var isUnderPressure = currentMemoryLoadBytes >= highMemoryLoadThresholdBytes * 0.85;
+        if (!isUnderPressure)
+        {
+            return;
+        }
+
+        var tagsToKeep = new HashSet<string>(StringComparer.Ordinal)
+        {
+            _activePageTag,
+            incomingTag
+        };
+
+        foreach (var cacheTag in _pageCache.Keys.ToList())
+        {
+            if (tagsToKeep.Contains(cacheTag))
+            {
+                continue;
+            }
+
+            _pageCache.Remove(cacheTag);
+        }
     }
 
     private HomePage CreateHomePage()
@@ -214,7 +257,15 @@ public partial class MainWindow : FluentWindow
     {
         Loaded -= MainWindow_Loaded;
         _viewModel.ThemeRequested -= ViewModel_ThemeRequested;
-        _widgetManager.CloseAll();
+        if (_widgetManager is IDisposable disposableWidgetManager)
+        {
+            disposableWidgetManager.Dispose();
+        }
+        else
+        {
+            _widgetManager.CloseAll();
+        }
+
         base.OnClosed(e);
     }
 

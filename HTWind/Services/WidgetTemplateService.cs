@@ -37,9 +37,19 @@ public class WidgetTemplateService : IWidgetTemplateService
         "HTWind",
         "BuiltInTemplates"
     );
+    private readonly object _materializedTemplatesSync = new();
+    private readonly Dictionary<BuiltInWidgetType, string> _materializedTemplatePaths = new();
 
     public string CreateTemplateFile(BuiltInWidgetType widgetType)
     {
+        lock (_materializedTemplatesSync)
+        {
+            if (_materializedTemplatePaths.TryGetValue(widgetType, out var cachedPath))
+            {
+                return cachedPath;
+            }
+        }
+
         Directory.CreateDirectory(_templateDirectory);
 
         var fileName = widgetType switch
@@ -71,10 +81,21 @@ public class WidgetTemplateService : IWidgetTemplateService
         var path = Path.Combine(_templateDirectory, fileName);
         if (File.Exists(path))
         {
+            lock (_materializedTemplatesSync)
+            {
+                _materializedTemplatePaths[widgetType] = path;
+            }
+
             return path;
         }
 
         File.WriteAllText(path, LoadEmbeddedTemplate(widgetType), Encoding.UTF8);
+
+        lock (_materializedTemplatesSync)
+        {
+            _materializedTemplatePaths[widgetType] = path;
+        }
+
         return path;
     }
 

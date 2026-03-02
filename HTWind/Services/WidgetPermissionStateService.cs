@@ -1,12 +1,16 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Microsoft.Web.WebView2.Core;
 
 namespace HTWind.Services;
 
-public sealed class WidgetPermissionStateService : IWidgetPermissionStateService
+public sealed partial class WidgetPermissionStateService : IWidgetPermissionStateService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly PermissionStateJsonContext JsonContext = new(JsonOptions);
+
     private readonly object _sync = new();
     private readonly string _stateFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -97,7 +101,8 @@ public sealed class WidgetPermissionStateService : IWidgetPermissionStateService
         try
         {
             var json = File.ReadAllText(_stateFilePath);
-            var records = JsonSerializer.Deserialize<List<PermissionDecisionRecord>>(json) ?? [];
+            var records = JsonSerializer.Deserialize(json, JsonContext.ListPermissionDecisionRecord)
+                ?? [];
             var results = new Dictionary<string, CoreWebView2PermissionState>(
                 StringComparer.OrdinalIgnoreCase
             );
@@ -161,7 +166,7 @@ public sealed class WidgetPermissionStateService : IWidgetPermissionStateService
                 .ToList();
 
             Directory.CreateDirectory(Path.GetDirectoryName(_stateFilePath)!);
-            var json = JsonSerializer.Serialize(records, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(records, JsonContext.ListPermissionDecisionRecord);
             File.WriteAllText(_stateFilePath, json);
         }
         catch
@@ -203,4 +208,8 @@ public sealed class WidgetPermissionStateService : IWidgetPermissionStateService
 
         public string State { get; set; } = string.Empty;
     }
+
+    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSerializable(typeof(List<PermissionDecisionRecord>))]
+    private sealed partial class PermissionStateJsonContext : JsonSerializerContext;
 }

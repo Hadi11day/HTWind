@@ -32,8 +32,9 @@ public sealed class HtmlEditorService : IHtmlEditorService
         await editorWebView.EnsureCoreWebView2Async(env);
         editorWebView.CoreWebView2.WebMessageReceived += webMessageReceivedHandler;
 
+        var readyTask = WaitEditorReadyAsync(editorWebView.CoreWebView2);
         editorWebView.NavigateToString(GetMonacoHostHtml());
-        await WaitEditorReadyAsync(editorWebView);
+        await readyTask;
         await PushFileContentToEditorAsync(editorWebView, filePath);
     }
 
@@ -92,19 +93,62 @@ public sealed class HtmlEditorService : IHtmlEditorService
         _webViewEnvironmentProvider.ReleaseEditorEnvironment();
     }
 
-    private static async Task WaitEditorReadyAsync(WebView2 editorWebView)
+    private static async Task WaitEditorReadyAsync(CoreWebView2 coreWebView)
     {
-        for (var i = 0; i < 80; i++)
-        {
-            var result = await editorWebView.ExecuteScriptAsync(
-                "window.isEditorReady ? window.isEditorReady() : false;"
-            );
-            if (string.Equals(result, "true", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
+        var readyTaskSource = new TaskCompletionSource(
+          TaskCreationOptions.RunContinuationsAsynchronously
+        );
 
-            await Task.Delay(100);
+        EventHandler<CoreWebView2WebMessageReceivedEventArgs>? handler = null;
+        handler = (_, e) =>
+          {
+              if (!IsEditorReadyMessage(e.WebMessageAsJson))
+              {
+                  return;
+              }
+
+              if (handler is not null)
+              {
+                  coreWebView.WebMessageReceived -= handler;
+              }
+
+              readyTaskSource.TrySetResult();
+          };
+
+        coreWebView.WebMessageReceived += handler;
+
+        try
+        {
+            var completedTask = await Task.WhenAny(
+              readyTaskSource.Task,
+              Task.Delay(TimeSpan.FromSeconds(8))
+            );
+            if (completedTask == readyTaskSource.Task)
+            {
+                await readyTaskSource.Task;
+            }
+        }
+        finally
+        {
+            if (handler is not null)
+            {
+                coreWebView.WebMessageReceived -= handler;
+            }
+        }
+    }
+
+    private static bool IsEditorReadyMessage(string webMessageAsJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(webMessageAsJson);
+            var root = document.RootElement;
+            return root.TryGetProperty("type", out var typeElement)
+              && string.Equals(typeElement.GetString(), "editorReady", StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -289,12 +333,21 @@ public sealed class HtmlEditorService : IHtmlEditorService
                      scheduleValidation();
                    }
 
+                   function notifyEditorReady() {
+                     if (!window.chrome || !window.chrome.webview || !window.chrome.webview.postMessage) {
+                       return;
+                     }
+
+                     window.chrome.webview.postMessage({ type: 'editorReady' });
+                   }
+
                    function activateFallback() {
                      useFallback = true;
                      document.getElementById('container').style.display = 'none';
                      const fallback = document.getElementById('fallback');
                      fallback.style.display = 'block';
                      fallback.addEventListener('input', schedulePublish);
+                     notifyEditorReady();
                    }
 
                    if (typeof require === 'function') {
@@ -323,6 +376,7 @@ public sealed class HtmlEditorService : IHtmlEditorService
                        });
                        editor.onDidChangeModelContent(onEditorContentChanged);
                        scheduleValidation();
+                       notifyEditorReady();
                      }, activateFallback);
                    } else {
                      activateFallback();
