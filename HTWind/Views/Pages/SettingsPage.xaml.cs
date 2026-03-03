@@ -36,4 +36,14 @@ public partial class SettingsPage : UserControl
     {
         _viewModel.SetDeveloperMode(false);
     }
+
+    private void FullscreenSuppressionToggle_Checked(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SetFullscreenSuppression(true);
+    }
+
+    private void FullscreenSuppressionToggle_Unchecked(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SetFullscreenSuppression(false);
+    }
 }

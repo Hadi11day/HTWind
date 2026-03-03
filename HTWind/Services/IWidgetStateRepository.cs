@@ -4,9 +4,9 @@ public interface IWidgetStateRepository
 {
     bool HasStateFile();
 
-    IReadOnlyList<WidgetStateRecord> Load();
+    WidgetStateSnapshot Load();
 
-    void Save(IEnumerable<WidgetStateRecord> states);
+    void Save(WidgetStateSnapshot snapshot);
 
     string CopyWidgetToManagedStorage(string sourcePath);
 

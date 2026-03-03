@@ -203,6 +203,12 @@
   <data name="MainWindow_DeveloperModeDescription" xml:space="preserve">
     <value>Enable inspection tools and debug information for widgets.</value>
   </data>
+  <data name="MainWindow_HideWidgetsOnFullscreen" xml:space="preserve">
+    <value>Hide widgets on fullscreen apps</value>
+  </data>
+  <data name="MainWindow_HideWidgetsOnFullscreenDescription" xml:space="preserve">
+    <value>Temporarily close widgets only on the same display while another app is fullscreen, then restore them when fullscreen ends.</value>
+  </data>
   <data name="MainWindow_ResetAllWidgets" xml:space="preserve">
     <value>Reset all widgets</value>
   </data>

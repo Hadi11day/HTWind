@@ -6,6 +6,7 @@ public interface IWidgetManager
 {
     ObservableCollection<WidgetModel> Widgets { get; }
     bool HasPersistedState { get; }
+    bool IsFullscreenSuppressionEnabled { get; set; }
     void LoadPersistedWidgets();
     void AddWidget(string filePath);
     void AddWidget(string filePath, bool isVisible);

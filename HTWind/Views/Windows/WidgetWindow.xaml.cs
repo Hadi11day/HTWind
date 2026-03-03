@@ -46,6 +46,8 @@ public partial class WidgetWindow : Window
     private int _lastLivePreviewHash;
     private string? _lastNavigatedFilePath;
     private CornerResizeMode _resizeMode;
+    private Point _dragStartScreen;
+    private Point _dragStartWindow;
     private Point _resizeStartScreen;
     private Size _resizeStartSize;
     private Point _resizeStartWindow;
@@ -466,15 +468,12 @@ public partial class WidgetWindow : Window
         }
 
         _isDragging = true;
+        _dragStartScreen = GetCursorScreenDip();
+        _dragStartWindow = new Point(Left, Top);
 
-        try
+        if (e.Source is UIElement sourceElement)
         {
-            DragMove();
-        }
-        finally
-        {
-            _isDragging = false;
-            RefreshDesktopInteractionState();
+            sourceElement.CaptureMouse();
         }
 
         e.Handled = true;
@@ -483,7 +482,18 @@ public partial class WidgetWindow : Window
     private void DragOverlay_MouseMove(object sender, MouseEventArgs e)
     {
         _ = sender;
-        _ = e;
+
+        if (!_isDragging || e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var currentScreen = GetCursorScreenDip();
+        var deltaX = currentScreen.X - _dragStartScreen.X;
+        var deltaY = currentScreen.Y - _dragStartScreen.Y;
+
+        Left = _dragStartWindow.X + deltaX;
+        Top = _dragStartWindow.Y + deltaY;
     }
 
     private void DragOverlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -494,6 +504,12 @@ public partial class WidgetWindow : Window
         }
 
         _isDragging = false;
+
+        if (e.Source is UIElement sourceElement)
+        {
+            sourceElement.ReleaseMouseCapture();
+        }
+
         RefreshDesktopInteractionState();
     }
 

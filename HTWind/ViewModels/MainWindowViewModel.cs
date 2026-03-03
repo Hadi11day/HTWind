@@ -76,6 +76,16 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsFullscreenSuppressionEnabled
+    {
+        get => _widgetManager.IsFullscreenSuppressionEnabled;
+        set
+        {
+            _widgetManager.IsFullscreenSuppressionEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand AddWidgetCommand { get; }
 
     public ICommand ChangeVisibilityCommand { get; }
@@ -96,6 +106,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(IsRunOnStartupEnabled));
         OnPropertyChanged(nameof(IsDeveloperModeEnabled));
+        OnPropertyChanged(nameof(IsFullscreenSuppressionEnabled));
     }
 
     public void SetRunOnStartup(bool enabled)
@@ -106,6 +117,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void SetDeveloperMode(bool enabled)
     {
         IsDeveloperModeEnabled = enabled;
+    }
+
+    public void SetFullscreenSuppression(bool enabled)
+    {
+        IsFullscreenSuppressionEnabled = enabled;
     }
 
     private void AddWidget()

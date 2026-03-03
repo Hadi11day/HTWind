@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -17,6 +18,9 @@ public class WidgetManager : IWidgetManager, IDisposable
     private const int VisibleWindowQueueFastDelayMilliseconds = 20;
     private const int VisibleWindowQueueSteadyDelayMilliseconds = 40;
     private const int GeometryCaptureDebounceMilliseconds = 180;
+    private const int FullscreenSuppressionCheckIntervalMilliseconds = 400;
+    private const int FullscreenBoundsTolerancePixels = 2;
+    private const uint MonitorDefaultToNull = 0;
     private const string DefaultNewWidgetTemplate =
         "<!doctype html>\n"
         + "<html lang=\"en\">\n"
@@ -66,11 +70,15 @@ public class WidgetManager : IWidgetManager, IDisposable
     private readonly Dictionary<string, WidgetWindow> _windowsById = new();
     private readonly Dictionary<string, DispatcherTimer> _geometryCaptureTimersByWidgetId =
         new(StringComparer.Ordinal);
+    private readonly DispatcherTimer _fullscreenSuppressionTimer;
+    private readonly EventHandler _fullscreenSuppressionTickHandler;
     private readonly Queue<(WidgetModel Model, bool HasPersistedGeometry)> _visibleWindowCreateQueue = new();
     private readonly HashSet<string> _queuedVisibleWindowIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _runtimeSuppressedWindowIds = new(StringComparer.Ordinal);
     private bool _isRestoring;
     private bool _isProcessingVisibleWindowQueue;
     private bool _isDisposed;
+    private bool _isFullscreenSuppressionEnabled = true;
 
     public WidgetManager(
         IWidgetWindowFactory windowFactory,
@@ -95,6 +103,14 @@ public class WidgetManager : IWidgetManager, IDisposable
         _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         _saveDebounceTickHandler = SaveDebounceTimer_Tick;
         _saveDebounceTimer.Tick += _saveDebounceTickHandler;
+
+        _fullscreenSuppressionTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(FullscreenSuppressionCheckIntervalMilliseconds)
+        };
+        _fullscreenSuppressionTickHandler = FullscreenSuppressionTimer_Tick;
+        _fullscreenSuppressionTimer.Tick += _fullscreenSuppressionTickHandler;
+        _fullscreenSuppressionTimer.Start();
 
         SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
     }
@@ -126,17 +142,37 @@ public class WidgetManager : IWidgetManager, IDisposable
         _saveDebounceTimer.Stop();
         _saveDebounceTimer.Tick -= _saveDebounceTickHandler;
 
+        _fullscreenSuppressionTimer.Stop();
+        _fullscreenSuppressionTimer.Tick -= _fullscreenSuppressionTickHandler;
+
         _isDisposed = true;
     }
 
     public ObservableCollection<WidgetModel> Widgets { get; } = new();
     public bool HasPersistedState { get; private set; }
+    public bool IsFullscreenSuppressionEnabled
+    {
+        get => _isFullscreenSuppressionEnabled;
+        set
+        {
+            if (_isFullscreenSuppressionEnabled == value)
+            {
+                return;
+            }
+
+            _isFullscreenSuppressionEnabled = value;
+            ReconcileRuntimeSuppressedWidgets();
+            ScheduleSave();
+        }
+    }
 
     public void LoadPersistedWidgets()
     {
         HasPersistedState = _stateRepository.HasStateFile();
 
-        var states = _stateRepository.Load();
+        var snapshot = _stateRepository.Load();
+        _isFullscreenSuppressionEnabled = snapshot.SuppressWidgetsOnFullscreen;
+        var states = snapshot.Widgets;
         if (states.Count == 0)
         {
             return;
@@ -319,11 +355,18 @@ public class WidgetManager : IWidgetManager, IDisposable
         {
             if (!model.IsVisible)
             {
+                _runtimeSuppressedWindowIds.Remove(model.Id);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(model.FilePath) || !File.Exists(model.FilePath))
             {
+                return;
+            }
+
+            if (ShouldSuppressWidgetForActiveFullscreen(model))
+            {
+                _runtimeSuppressedWindowIds.Add(model.Id);
                 return;
             }
 
@@ -338,11 +381,23 @@ public class WidgetManager : IWidgetManager, IDisposable
 
         if (!model.IsVisible)
         {
+            _runtimeSuppressedWindowIds.Remove(model.Id);
             _geometryService.CaptureGeometry(window, model);
             ScheduleSave();
             window.Close();
             return;
         }
+
+        if (ShouldSuppressWidgetForActiveFullscreen(model))
+        {
+            _runtimeSuppressedWindowIds.Add(model.Id);
+            _geometryService.CaptureGeometry(window, model);
+            ScheduleSave();
+            window.Close();
+            return;
+        }
+
+        _runtimeSuppressedWindowIds.Remove(model.Id);
 
         RestoreWindowGeometryFromModel(window, model);
         if (_geometryService.EnsureVisibleOnAvailableDisplay(window, model))
@@ -470,6 +525,7 @@ public class WidgetManager : IWidgetManager, IDisposable
 
         SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
         _saveDebounceTimer.Stop();
+        _fullscreenSuppressionTimer.Stop();
 
         foreach (var editor in _editorWindowsById.Values.ToList())
         {
@@ -493,6 +549,7 @@ public class WidgetManager : IWidgetManager, IDisposable
         _windowsById.Clear();
         _visibleWindowCreateQueue.Clear();
         _queuedVisibleWindowIds.Clear();
+        _runtimeSuppressedWindowIds.Clear();
         _isProcessingVisibleWindowQueue = false;
         foreach (var model in Widgets.ToList())
         {
@@ -604,8 +661,17 @@ public class WidgetManager : IWidgetManager, IDisposable
 
                 if (!model.IsVisible)
                 {
+                    _runtimeSuppressedWindowIds.Remove(model.Id);
                     continue;
                 }
+
+                if (ShouldSuppressWidgetForActiveFullscreen(model))
+                {
+                    _runtimeSuppressedWindowIds.Add(model.Id);
+                    continue;
+                }
+
+                _runtimeSuppressedWindowIds.Remove(model.Id);
 
                 if (string.IsNullOrWhiteSpace(model.FilePath) || !File.Exists(model.FilePath))
                 {
@@ -652,6 +718,194 @@ public class WidgetManager : IWidgetManager, IDisposable
                 StartVisibleWindowQueueProcessing();
             }
         }
+    }
+
+    private void FullscreenSuppressionTimer_Tick(object? sender, EventArgs e)
+    {
+        _ = sender;
+        _ = e;
+
+        ReconcileRuntimeSuppressedWidgets();
+    }
+
+    private void ReconcileRuntimeSuppressedWidgets()
+    {
+        if (_isDisposed || Widgets.Count == 0)
+        {
+            return;
+        }
+
+        var activeFullscreenMonitorDeviceName = GetActiveFullscreenMonitorDeviceName();
+
+        foreach (var model in Widgets)
+        {
+            if (!model.IsVisible)
+            {
+                _runtimeSuppressedWindowIds.Remove(model.Id);
+                continue;
+            }
+
+            if (ShouldSuppressWidgetForMonitor(model, activeFullscreenMonitorDeviceName))
+            {
+                SuppressWidgetWindowAtRuntime(model);
+                continue;
+            }
+
+            RestoreSuppressedWidgetWindowAtRuntime(model);
+        }
+    }
+
+    private void SuppressWidgetWindowAtRuntime(WidgetModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (_windowsById.TryGetValue(model.Id, out var window))
+        {
+            _geometryService.CaptureGeometry(window, model);
+            ScheduleSave();
+            window.Close();
+        }
+
+        _runtimeSuppressedWindowIds.Add(model.Id);
+        _queuedVisibleWindowIds.Remove(model.Id);
+    }
+
+    private void RestoreSuppressedWidgetWindowAtRuntime(WidgetModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (!_runtimeSuppressedWindowIds.Remove(model.Id))
+        {
+            return;
+        }
+
+        if (_windowsById.ContainsKey(model.Id))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.FilePath) || !File.Exists(model.FilePath))
+        {
+            return;
+        }
+
+        var hasPersistedGeometry =
+            model.Left.HasValue
+            || model.Top.HasValue
+            || model.WidgetWidth.HasValue
+            || model.WidgetHeight.HasValue;
+
+        EnqueueVisibleWindowCreation(model, hasPersistedGeometry);
+    }
+
+    private bool ShouldSuppressWidgetForActiveFullscreen(WidgetModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (!IsFullscreenSuppressionEnabled)
+        {
+            return false;
+        }
+
+        return ShouldSuppressWidgetForMonitor(model, GetActiveFullscreenMonitorDeviceName());
+    }
+
+    private static bool ShouldSuppressWidgetForMonitor(
+        WidgetModel model,
+        string? fullscreenMonitorDeviceName
+    )
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (string.IsNullOrWhiteSpace(fullscreenMonitorDeviceName))
+        {
+            return false;
+        }
+
+        var widgetMonitorDeviceName = ResolveWidgetMonitorDeviceName(model);
+        if (string.IsNullOrWhiteSpace(widgetMonitorDeviceName))
+        {
+            return false;
+        }
+
+        return string.Equals(
+            widgetMonitorDeviceName,
+            fullscreenMonitorDeviceName,
+            StringComparison.OrdinalIgnoreCase
+        );
+    }
+
+    private static string? ResolveWidgetMonitorDeviceName(WidgetModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (!string.IsNullOrWhiteSpace(model.PreferredMonitorDeviceName))
+        {
+            return model.PreferredMonitorDeviceName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(model.MonitorDeviceName))
+        {
+            return model.MonitorDeviceName;
+        }
+
+        var recentPlacement = model.MonitorPlacements
+            .Where(placement => !string.IsNullOrWhiteSpace(placement.MonitorDeviceName))
+            .OrderByDescending(placement => placement.LastSeenAtUtc)
+            .FirstOrDefault();
+
+        return recentPlacement?.MonitorDeviceName;
+    }
+
+    private static string? GetActiveFullscreenMonitorDeviceName()
+    {
+        var foregroundWindowHandle = GetForegroundWindow();
+        if (foregroundWindowHandle == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        if (!IsWindowVisible(foregroundWindowHandle) || IsIconic(foregroundWindowHandle))
+        {
+            return null;
+        }
+
+        GetWindowThreadProcessId(foregroundWindowHandle, out var processId);
+        if (processId == Environment.ProcessId)
+        {
+            return null;
+        }
+
+        if (!GetWindowRect(foregroundWindowHandle, out var windowRect))
+        {
+            return null;
+        }
+
+        if (windowRect.Right <= windowRect.Left || windowRect.Bottom <= windowRect.Top)
+        {
+            return null;
+        }
+
+        var monitor = MonitorFromWindow(foregroundWindowHandle, MonitorDefaultToNull);
+        if (monitor == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        var monitorInfo = new MonitorInfoEx { CbSize = Marshal.SizeOf<MonitorInfoEx>() };
+        if (!GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return null;
+        }
+
+        var isFullscreenWindow =
+            Math.Abs(windowRect.Left - monitorInfo.RcMonitor.Left) <= FullscreenBoundsTolerancePixels
+            && Math.Abs(windowRect.Top - monitorInfo.RcMonitor.Top) <= FullscreenBoundsTolerancePixels
+            && Math.Abs(windowRect.Right - monitorInfo.RcMonitor.Right) <= FullscreenBoundsTolerancePixels
+            && Math.Abs(windowRect.Bottom - monitorInfo.RcMonitor.Bottom)
+                <= FullscreenBoundsTolerancePixels;
+
+        return isFullscreenWindow ? monitorInfo.SzDevice : null;
     }
 
     private static void NormalizePersistedGeometry(WidgetModel model)
@@ -770,35 +1024,41 @@ public class WidgetManager : IWidgetManager, IDisposable
 
     private void SaveStateToDisk()
     {
-        _stateRepository.Save(
-            Widgets.Select(model => new WidgetStateRecord
-            {
-                Id = model.Id,
-                Name = model.Name,
-                FilePath = model.FilePath,
-                IsVisible = model.IsVisible,
-                IsLocked = model.IsLocked,
-                IsPinned = model.IsPinned,
-                Left = model.Left,
-                Top = model.Top,
-                WidgetWidth = model.WidgetWidth,
-                WidgetHeight = model.WidgetHeight,
-                MonitorDeviceName = model.MonitorDeviceName,
-                PreferredMonitorDeviceName = model.PreferredMonitorDeviceName,
-                MonitorPlacements = model.MonitorPlacements
-                    .Where(placement => !string.IsNullOrWhiteSpace(placement.MonitorDeviceName))
-                    .Select(placement => new WidgetMonitorPlacement
-                    {
-                        MonitorDeviceName = placement.MonitorDeviceName,
-                        Left = placement.Left,
-                        Top = placement.Top,
-                        Width = placement.Width,
-                        Height = placement.Height,
-                        LastSeenAtUtc = placement.LastSeenAtUtc
-                    })
-                    .ToList()
-            })
-        );
+        var snapshot = new WidgetStateSnapshot
+        {
+            SuppressWidgetsOnFullscreen = IsFullscreenSuppressionEnabled,
+            Widgets = Widgets
+                .Select(model => new WidgetStateRecord
+                {
+                    Id = model.Id,
+                    Name = model.Name,
+                    FilePath = model.FilePath,
+                    IsVisible = model.IsVisible,
+                    IsLocked = model.IsLocked,
+                    IsPinned = model.IsPinned,
+                    Left = model.Left,
+                    Top = model.Top,
+                    WidgetWidth = model.WidgetWidth,
+                    WidgetHeight = model.WidgetHeight,
+                    MonitorDeviceName = model.MonitorDeviceName,
+                    PreferredMonitorDeviceName = model.PreferredMonitorDeviceName,
+                    MonitorPlacements = model.MonitorPlacements
+                        .Where(placement => !string.IsNullOrWhiteSpace(placement.MonitorDeviceName))
+                        .Select(placement => new WidgetMonitorPlacement
+                        {
+                            MonitorDeviceName = placement.MonitorDeviceName,
+                            Left = placement.Left,
+                            Top = placement.Top,
+                            Width = placement.Width,
+                            Height = placement.Height,
+                            LastSeenAtUtc = placement.LastSeenAtUtc
+                        })
+                        .ToList()
+                })
+                .ToList()
+        };
+
+        _stateRepository.Save(snapshot);
     }
 
     private void SystemEvents_DisplaySettingsChanged(object? sender, EventArgs e)
@@ -837,6 +1097,60 @@ public class WidgetManager : IWidgetManager, IDisposable
         {
             ScheduleSave();
         }
+
+        ReconcileRuntimeSuppressedWidgets();
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfoEx monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+
+        public int Top;
+
+        public int Right;
+
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MonitorInfoEx
+    {
+        public int CbSize;
+
+        public NativeRect RcMonitor;
+
+        public NativeRect RcWork;
+
+        public int DwFlags;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string SzDevice;
     }
 
     private static void RestoreWindowGeometryFromModel(WidgetWindow window, WidgetModel model)

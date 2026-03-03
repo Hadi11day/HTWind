@@ -26,34 +26,50 @@ public sealed partial class WidgetStateRepository : IWidgetStateRepository
         return File.Exists(_stateFilePath);
     }
 
-    public IReadOnlyList<WidgetStateRecord> Load()
+    public WidgetStateSnapshot Load()
     {
         if (!File.Exists(_stateFilePath))
         {
-            return [];
+            return new WidgetStateSnapshot();
         }
 
         try
         {
             var json = File.ReadAllText(_stateFilePath);
-            var states = JsonSerializer.Deserialize(json, JsonContext.ListWidgetStateRecord);
-            return states ?? [];
+
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind == JsonValueKind.Array)
+            {
+                var legacyStates = JsonSerializer.Deserialize(json, JsonContext.ListWidgetStateRecord);
+                return new WidgetStateSnapshot
+                {
+                    Widgets = legacyStates ?? [],
+                    SuppressWidgetsOnFullscreen = true
+                };
+            }
+
+            if (document.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                var snapshot = JsonSerializer.Deserialize(json, JsonContext.WidgetStateSnapshot);
+                return snapshot ?? new WidgetStateSnapshot();
+            }
+
+            return new WidgetStateSnapshot();
         }
         catch
         {
-            return [];
+            return new WidgetStateSnapshot();
         }
     }
 
-    public void Save(IEnumerable<WidgetStateRecord> states)
+    public void Save(WidgetStateSnapshot snapshot)
     {
-        ArgumentNullException.ThrowIfNull(states);
+        ArgumentNullException.ThrowIfNull(snapshot);
 
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_stateFilePath)!);
-            var stateList = states as List<WidgetStateRecord> ?? states.ToList();
-            var json = JsonSerializer.Serialize(stateList, JsonContext.ListWidgetStateRecord);
+            var json = JsonSerializer.Serialize(snapshot, JsonContext.WidgetStateSnapshot);
             File.WriteAllText(_stateFilePath, json);
         }
         catch
@@ -183,6 +199,7 @@ public sealed partial class WidgetStateRepository : IWidgetStateRepository
     }
 
     [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSerializable(typeof(WidgetStateSnapshot))]
     [JsonSerializable(typeof(List<WidgetStateRecord>))]
     private sealed partial class WidgetStateJsonContext : JsonSerializerContext;
 }
